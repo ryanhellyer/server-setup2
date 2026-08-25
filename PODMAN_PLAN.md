@@ -247,7 +247,15 @@ handles their platform.
 
 ```bash
 sudo ./scripts/bootstrap.sh              # one-time: packages + dirs
-sudo git clone git@github.com:<you>/server-setup.git /opt/server-setup
+# 1. Make an SSH key SPECIFIC to this server (not your personal key):
+#      ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N "" -C "server-setup-deploy"
+#      cat /root/.ssh/id_ed25519.pub
+# 2. Add that public key in the GitHub console:
+#      - this repo only: repo Settings -> Deploy keys -> Add deploy key
+#      - account-wide:   github.com/settings/keys -> New SSH key
+#    ssh -T git@github.com            # verify
+# 3. Clone yourself (no script does this):
+git clone git@github.com:<you>/server-setup.git /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # fill secrets, DEPLOY_ENV=production
 # apply Hetzner sshfs mounts (fstab / automount)
@@ -269,7 +277,10 @@ are cached**.
 
 ```bash
 sudo ./scripts/bootstrap.sh
-# put the repo at /opt/server-setup (git clone OR rsync — deploy.sh works either way)
+# make a server-specific key and add it to the GitHub console, then clone:
+#   ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N "" -C "server-setup-deploy"
+#   cat /root/.ssh/id_ed25519.pub    -> repo Settings -> Deploy keys (or github.com/settings/keys)
+git clone git@github.com:<you>/server-setup.git /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
 sudo ./scripts/deploy.sh                 # builds + starts the whole stack
