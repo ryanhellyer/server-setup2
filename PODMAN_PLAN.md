@@ -33,7 +33,8 @@ Internet -> [Nginx proxy container :80/:443]   (Certbot TLS, brotli, gzip)
 ### Container OS image choice
 
 *   Use **ubuntu:24.04** for PHP-FPM and Nginx (24.04 LTS is stable, and what the
-    PHP packages target well). PHP **8.5** comes from the **ondrej/php** PPA.
+    PHP packages target well). PHP **8.5** comes from **packages.sury.org** (the
+    canonical source — the ondrej Launchpad PPA no longer carries 8.5 for noble).
 
 *   Node image: official **node:22 (Debian)** slim — simplest and stable.
 
@@ -75,7 +76,7 @@ server-setup/
 |   |   `-- ionos.hellyer.kiwi/      # PHP diagnostics page (test)
 |   `-- _legacy/                 # old garbled configs, kept for reference only
 |-- php/
-|   |-- Containerfile            # ubuntu:24.04 + php8.5-fpm (ondrej PPA) + extensions
+|   |-- Containerfile            # ubuntu:24.04 + php8.5-fpm (sury.org) + extensions
 |   |-- 10-opcache.ini
 |   |-- 20-fpm-security.ini
 |   `-- fpm-www.conf
@@ -159,17 +160,24 @@ PHP container.
 
 ## 4. PHP-FPM container (the workhorse)
 
-Containerfile (base **ubuntu:24.04**, PHP **8.5** from ondrej/php):
+Containerfile (base **ubuntu:24.04**, PHP **8.5** from packages.sury.org —
+the ondrej PPA no longer ships 8.5 for noble; `php8.5-xml` provides DOM and
+opcache is built into the core `php8.5-common`):
 
 ```dockerfile
 FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y software-properties-common ca-certificates \
-    && add-apt-repository -y ppa:ondrej/php \
-    && apt-get update && apt-get install -y \
-      php8.5-fpm php8.5-mysql php8.5-mbstring php8.5-zip php8.5-intl \
-      php8.5-imagick php8.5-gd php8.5-curl php8.5-dom php8.5-xml php8.5-cli \
-      php8.5-redis php8.5-sqlite3 php8.5-opcache \
-      composer ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg \
+    && curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/php.gpg \
+    && echo 'deb [signed-by=/usr/share/keyrings/php.gpg] https://packages.sury.org/php/ noble main' \
+       > /etc/apt/sources.list.d/php.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+      php8.5-fpm php8.5-cli php8.5-mysql php8.5-mbstring php8.5-zip php8.5-intl \
+      php8.5-imagick php8.5-gd php8.5-curl php8.5-xml php8.5-redis php8.5-sqlite3 \
+      ffmpeg \
+    && curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \
+       && chmod +x /usr/local/bin/wp
 ```
 
 *   OPcache enabled (128M, 10000 slots, JIT 1255/64M) via `10-opcache.ini`.
