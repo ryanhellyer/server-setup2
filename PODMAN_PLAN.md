@@ -247,8 +247,8 @@ handles their platform.
 
 ```bash
 sudo ./scripts/bootstrap.sh              # one-time: packages + dirs
-git clone git@github.com:<you>/server-setup.git
-cd server-setup
+sudo git clone git@github.com:<you>/server-setup.git /opt/server-setup
+cd /opt/server-setup
 cp .env.example .env                     # fill secrets, DEPLOY_ENV=production
 # apply Hetzner sshfs mounts (fstab / automount)
 sudo ./scripts/deploy.sh                 # git pull -> nginx -t -> compose up -d --build
@@ -269,14 +269,18 @@ are cached**.
 
 ```bash
 sudo ./scripts/bootstrap.sh
-# get the repo onto the box (git clone OR rsync a copy — deploy.sh works either way)
-cd server-setup
+# put the repo at /opt/server-setup (git clone OR rsync — deploy.sh works either way)
+cd /opt/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
 sudo ./scripts/deploy.sh                 # builds + starts the whole stack
 sudo ./scripts/test-site.sh              # scaffold the ionos.hellyer.kiwi test page
 sudo ./scripts/certbot-issue.sh          # REAL cert for ionos.hellyer.kiwi only
 # point DNS ionos.hellyer.kiwi at this box, then open https://ionos.hellyer.kiwi
 ```
+
+The repo lives at **`/opt/server-setup`** — a stable path outside `/home`, so the
+systemd units (`scripts/install-systemd.sh`) and CLI wrappers (`bin/pod-exec`)
+keep resolving correctly across reboots and user sessions.
 
 In test mode the box is lightweight by design:
 

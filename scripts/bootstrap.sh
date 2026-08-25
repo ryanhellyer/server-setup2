@@ -33,8 +33,9 @@ echo
 echo "Host bootstrap complete."
 echo
 echo "Next steps:"
-echo "  1. Get this repo onto the host (git clone <remote> OR rsync a copy)."
-echo "  2. cd server-setup && cp .env.example .env && edit .env (test settings)."
+echo "  1. Put this repo on the host at /opt/server-setup"
+echo "     (git clone <remote> /opt/server-setup  OR  rsync a copy there)."
+echo "  2. cd /opt/server-setup && cp .env.example .env && edit .env (test settings)."
 echo "  3. sudo ./scripts/deploy.sh          # builds + starts the whole stack"
 echo "  4. sudo ./scripts/test-site.sh       # scaffold the ionos test page"
 echo "  5. sudo ./scripts/certbot-issue.sh   # real TLS for ionos.hellyer.kiwi"
