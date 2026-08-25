@@ -6,7 +6,7 @@
 # A SINGLE shared PHP-FPM container serves every site (Laravel + WordPress).
 # Add a second container ONLY if a site truly needs a different PHP version.
 
-FROM ubuntu:24.04
+FROM docker.io/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 

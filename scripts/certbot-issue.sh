@@ -31,7 +31,7 @@ mkdir -p "$WEBROOT" "$LETSENCRYPT_DIR"
 if command -v certbot >/dev/null 2>&1; then
   CERTBOT=(certbot)
 else
-  CERTBOT=(podman run --rm -v "$LETSENCRYPT_DIR:/etc/letsencrypt" -v "$WEBROOT:/var/www/acme" certbot/certbot)
+  CERTBOT=(podman run --rm -v "$LETSENCRYPT_DIR:/etc/letsencrypt" -v "$WEBROOT:/var/www/acme" docker.io/certbot/certbot)
 fi
 
 EXTRA=()
