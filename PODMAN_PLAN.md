@@ -446,3 +446,42 @@ Confirmed — these are locked in and reflected throughout this plan:
     compose` and falls back to `podman-compose` if it isn't available.
 *   **Boot-start: systemd units.** `deploy.sh` generates + enables
     `container-*.service` units so the stack comes up automatically on reboot.
+
+* * *
+
+## 13. Sizing — test (2 GB / 1 core) vs production (16 GB / 8 cores)
+
+Everything is driven from `.env`; the repo ships 2 GB-safe defaults. Set these
+for production:
+
+| Component | Test default (2 GB / 1 core) | Production (16 GB / 8 cores) |
+|---|---|---|
+| `FASTCGI_CACHE_SIZE` | `64m` | `500m` |
+| `MARIADB_BUFFER_POOL` | `256m` | `8G` |
+| `MARIADB_LOG_SIZE` | `64m` | `1G` |
+| `PHP_FPM_MAX_CHILDREN` | `20` | `50` |
+| `PHP_FPM_START_SERVERS` | `4` | `8` |
+| `PHP_FPM_MIN_SPARE` | `4` | `8` |
+| `PHP_FPM_MAX_SPARE` | `10` | `30` |
+| `PHP_FPM_MEMORY_LIMIT` | `128M` | `256M` |
+| `REDIS_MAXMEMORY` | `64mb` | `1024mb` |
+| `SWAP_SIZE` | `2G` (auto-created if none) | optional safety net; not required |
+
+Notes:
+
+*   **Rule of thumb:** MariaDB buffer pool ≈ 50–70% of RAM, but keep headroom
+    for PHP-FPM (children × memory_limit) + Redis + nginx + the OS. `8G` on a
+    16 GB box leaves room for 50 PHP workers at 256M (~12.8 GB worst case, far
+    less in practice).
+*   **CPU:** nginx uses `worker_processes auto` (one per core), PHP-FPM
+    `pm = dynamic` — on 8 cores, bump `PHP_FPM_START_SERVERS`/`MAX_SPARE` so
+    spare workers cover bursts without spinning up.
+*   **Host:** production should have real (not just swap) RAM for the DB; add a
+    small swapfile as an OOM safety net only.
+*   **PHP image note:** workers each hold up to `PHP_FPM_MEMORY_LIMIT`; if a
+    site needs more, raise it and increase children accounting accordingly.
+
+Apply on production by setting the values in `.env` (with
+`DEPLOY_ENV=production` and `CERTBOT_DOMAINS_FILE=certbot/domains.txt`), then
+`sudo ./deploy.sh` — `render-config.sh` regenerates `nginx.conf`,
+`maria/my.cnf` and `php/fpm-www.conf` from them.
