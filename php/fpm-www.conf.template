@@ -11,10 +11,10 @@ listen.group = www-data
 listen.mode = 0660
 
 pm = dynamic
-pm.max_children = 20
-pm.start_servers = 4
-pm.min_spare_servers = 4
-pm.max_spare_servers = 10
+pm.max_children = __PHP_FPM_MAX_CHILDREN__
+pm.start_servers = __PHP_FPM_START_SERVERS__
+pm.min_spare_servers = __PHP_FPM_MIN_SPARE__
+pm.max_spare_servers = __PHP_FPM_MAX_SPARE__
 pm.max_requests = 500
 
 ; Allow the socket to be shared with the nginx container over the volume.
@@ -23,6 +23,6 @@ listen.allowed_clients = 127.0.0.1
 ; Buffers/logging.
 request_terminate_timeout = 300s
 catch_workers_output = no
-php_admin_value[memory_limit] = 128M
+php_admin_value[memory_limit] = __PHP_FPM_MEMORY_LIMIT__
 php_admin_value[upload_max_filesize] = 64M
 php_admin_value[post_max_size] = 64M

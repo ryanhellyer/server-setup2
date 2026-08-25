@@ -8,6 +8,7 @@
 #   - deploy.sh    (automatically, when podman/podman-compose are missing)
 # =============================================================================
 set -euo pipefail
+cd "$(dirname "$0")/.."
 [ "$(id -u)" -eq 0 ] || { echo "Run as root."; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -32,5 +33,8 @@ apt-get install -y \
 
 echo "==> creating bind-mount directories"
 mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
+
+# Small boxes: ensure swap so memory pressure doesn't OOM/thrash.
+bash scripts/ensure-swap.sh
 
 echo "Host packages installed."
