@@ -9,10 +9,11 @@
 #
 # What it does:
 #   1. Installs the host packages (podman, podman-compose, curl, openssl, nano...).
-#   2. Downloads this whole repo as a tarball from GitHub (public repo — no SSH
+#   2. Prompts to create an admin user 'ryan' with sudo privileges.
+#   3. Downloads this whole repo as a tarball from GitHub (public repo — no SSH
 #      keys needed) into /opt/server-setup and writes a .tarball marker so
 #      deploy.sh can refresh the files the same way later.
-#   3. Hands off to ./deploy.sh, which refreshes the files, creates .env (opens
+#   4. Hands off to ./deploy.sh, which refreshes the files, creates .env (opens
 #      it in nano for you), builds the images and starts the whole stack.
 #
 # Safe to re-run — every step is idempotent, and your .env / TLS certs are
@@ -25,6 +26,20 @@ TARBALL_URL="${SERVER_SETUP_TARBALL:-https://github.com/ryanhellyer/server-setup
 
 say()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 ok()   { printf '\033[1;32m[ok]\033[0m %s\n' "$*"; }
+
+# Yes/no prompt that works even when the script was piped in via curl | bash.
+ask_yn() { # "$1" prompt; returns 0 on yes, 1 on no (default: yes)
+  local ans
+  if [ -e /dev/tty ]; then
+    read -r -p "$1 [Y/n] " ans < /dev/tty
+  else
+    read -r -p "$1 [Y/n] " ans
+  fi
+  case "${ans,,}" in
+    n|no) return 1 ;;
+    *)    return 0 ;;
+  esac
+}
 
 # ---- 0. root ----
 if [ "$(id -u)" -ne 0 ]; then
@@ -62,7 +77,23 @@ apt-get install -y \
 mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
 ok "Host packages installed."
 
-# ---- 2. download the files (no git, no keys) ----
+# ---- 2. admin user ----
+if ask_yn "Create admin user 'ryan' with sudo privileges?"; then
+  if id ryan >/dev/null 2>&1; then
+    say "User 'ryan' already exists — ensuring sudo."
+    usermod -aG sudo ryan
+  else
+    say "Creating user 'ryan'."
+    useradd -m -s /bin/bash ryan
+    usermod -aG sudo ryan
+    echo
+    echo "Set a password for 'ryan' (needed for sudo)."
+    passwd ryan
+  fi
+  ok "User 'ryan' has sudo privileges."
+fi
+
+# ---- 3. download the files (no git, no keys) ----
 say "Downloading the server-setup files from GitHub"
 mkdir -p "$REPO_DIR"
 curl -fsSL "$TARBALL_URL" -o /tmp/server-setup.tar.gz
@@ -76,7 +107,7 @@ chmod 600 "$REPO_DIR/.tarball"
 [ -f "$REPO_DIR/deploy.sh" ] || { echo "Download failed — no deploy.sh found in the tarball."; exit 1; }
 ok "Files installed at $REPO_DIR"
 
-# ---- 3. hand off to deploy.sh ----
+# ---- 4. hand off to deploy.sh ----
 say "Handing off to deploy.sh — it will open .env in nano for the secrets."
 cd "$REPO_DIR"
 exec bash ./deploy.sh

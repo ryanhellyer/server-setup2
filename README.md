@@ -14,9 +14,11 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/in
 That one command:
 
 1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...).
-2. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
+2. **Prompts to create an admin user `ryan`** with sudo privileges (skips it if
+   the user already exists).
+3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
    so no SSH keys, no git, no GitHub console work are needed.
-3. **Deploys** — it creates `.env` and opens it in **nano** for you to fill in
+4. **Deploys** — it creates `.env` and opens it in **nano** for you to fill in
    secrets, builds the nginx + PHP images, brings up the whole stack, and
    installs systemd units so it starts at boot.
 
