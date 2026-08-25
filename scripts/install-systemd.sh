@@ -22,7 +22,11 @@ CONTAINERS=(nginx php-fpm mariadb redis node)
 SYSTEMD_DIR=/etc/systemd/system
 
 # Ensure the stack is up so units can be generated from live containers.
-podman compose up -d
+if podman compose version >/dev/null 2>&1; then
+  podman compose up -d
+else
+  podman-compose up -d
+fi
 
 for c in "${CONTAINERS[@]}"; do
   echo "==> Generating systemd unit for $c"

@@ -1,51 +1,32 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bootstrap.sh — one-time host setup for a fresh Ubuntu 24.04/26.04 server.
-# Installs the (small) host package set, creates the bind-mount directories,
-# then prints the next steps. Run once as root.
+# bootstrap.sh — one-time host setup for a fresh Ubuntu server: installs the
+# host packages + creates bind-mount dirs, then prints the next steps.
+# Run once as root.
 #
 #   sudo ./scripts/bootstrap.sh
+#
+# (install.sh does all of this in one shot; bootstrap.sh just does the host
+# half if you want to watch the steps.)
 # =============================================================================
 set -euo pipefail
-[ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo ./scripts/bootstrap.sh)."; exit 1; }
+cd "$(dirname "$0")/.."
 
-export DEBIAN_FRONTEND=noninteractive
-
-echo "==> apt update + upgrade"
-apt-get update
-apt-get upgrade -y
-
-echo "==> installing host packages"
-apt-get install -y \
-  podman \
-  podman-compose \
-  git \
-  openssl \
-  openssh-client \
-  sshfs \
-  ufw \
-  unattended-upgrades
-
-echo "==> creating bind-mount directories"
-mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
+bash scripts/host-setup.sh
 
 echo
 echo "Host bootstrap complete."
 echo
 echo "Next steps:"
-echo "  1. Make an SSH key SPECIFIC to this server (don't reuse a personal key):"
-echo "       ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N '' -C 'server-setup-deploy'"
-echo "       cat /root/.ssh/id_ed25519.pub"
-echo "  2. Add that public key in the GitHub console — either:"
-echo "       - this repo only: github.com/<you>/server-setup2 -> Settings -> Deploy keys ->"
-echo "         Add deploy key (paste key, tick 'Allow write access' only if needed)."
-echo "       - account-wide:  github.com/settings/keys -> New SSH key."
-echo "  3. Verify the host can reach GitHub:"
-echo "       ssh -T git@github.com   # should greet you"
-echo "  4. Clone the repo yourself (no script does this):"
-echo "       git clone git@github.com:ryanhellyer/server-setup2.git /opt/server-setup"
-echo "  5. cd /opt/server-setup && cp .env.example .env && edit .env (test settings)."
-echo "  6. sudo ./scripts/deploy.sh          # builds + starts the whole stack"
-echo "  7. sudo ./scripts/test-site.sh       # scaffold the ionos test page"
-echo "  8. sudo ./scripts/certbot-issue.sh   # real TLS for ionos.hellyer.kiwi"
-echo "  9. Point DNS ionos.hellyer.kiwi at this host and visit https://ionos.hellyer.kiwi"
+echo "  Easiest — run the one-liner (installs packages, downloads files, deploys):"
+echo "    curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/install.sh"
+echo "      -o /tmp/install.sh && sudo bash /tmp/install.sh"
+echo
+echo "  Or manually (public repo — no git, no SSH keys needed):"
+echo "    mkdir -p /opt/server-setup"
+echo "    curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz |"
+echo "      tar -xz --strip-components=1 -C /opt/server-setup"
+echo "    cd /opt/server-setup && cp .env.example .env && nano .env"
+echo "    sudo ./deploy.sh"
+echo "    sudo ./scripts/test-site.sh      # scaffold the ionos test page"
+echo "    sudo ./scripts/certbot-issue.sh  # real TLS for ionos.hellyer.kiwi"
