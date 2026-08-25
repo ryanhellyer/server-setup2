@@ -107,6 +107,13 @@ chmod 600 "$REPO_DIR/.tarball"
 [ -f "$REPO_DIR/deploy.sh" ] || { echo "Download failed — no deploy.sh found in the tarball."; exit 1; }
 ok "Files installed at $REPO_DIR"
 
+# Transition guard: this is a tarball install — drop any stale .git left by an
+# earlier git-clone install so deploy.sh stays in tarball refresh mode.
+if [ -d "$REPO_DIR/.git" ]; then
+  say "Removing stale .git from an earlier git-clone install (tarball mode now)."
+  rm -rf "$REPO_DIR/.git"
+fi
+
 # ---- 4. hand off to deploy.sh ----
 say "Handing off to deploy.sh — it will open .env in nano for the secrets."
 cd "$REPO_DIR"

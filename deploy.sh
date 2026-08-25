@@ -42,17 +42,17 @@ if [ ! -f .env ]; then
 fi
 
 # ---- 3. refresh files ----
-# Git clone -> git pull. install.sh tarball -> re-download the tarball.
+# Tarball install (.tarball marker) -> re-download. Git clone -> git pull.
 # Plain copied checkout -> deploy as-is.
-echo "==> refresh files (git pull, or tarball refresh for install.sh installs)"
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -n "$(git remote 2>/dev/null)" ]; then
-  git pull --ff-only
-elif [ -f .tarball ]; then
+echo "==> refresh files (tarball re-download, or git pull for git installs)"
+if [ -f .tarball ]; then
   TARBALL_URL="$(cat .tarball)"
   echo "  (tarball install — downloading the latest files from GitHub)"
   curl -fsSL "$TARBALL_URL" -o /tmp/server-setup.tar.gz
   tar -xzf /tmp/server-setup.tar.gz --strip-components=1 -C "$PWD"
   rm -f /tmp/server-setup.tar.gz
+elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -n "$(git remote 2>/dev/null)" ]; then
+  git pull --ff-only
 else
   echo "  (local checkout — deploying what's here)"
 fi
