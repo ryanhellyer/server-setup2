@@ -47,6 +47,9 @@ if command -v ufw >/dev/null 2>&1; then
   echo "==> firewall rules ensured (22, 80, 443/tcp)"
 fi
 
+# ---- 1c. swap: avoid OOM / thrash on small boxes ----
+"$PWD/scripts/ensure-swap.sh"
+
 # ---- 2. .env (create + open for editing) ----
 if [ ! -f .env ]; then
   cp .env.example .env
