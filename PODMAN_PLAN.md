@@ -413,10 +413,13 @@ Then, from the host (as root):
 | `artisan <cmd>` | php-fpm | `php artisan …` in the current site dir |
 | `wp <cmd>` | php-fpm | WP-CLI (now in the PHP image) |
 | `ffmpeg`, `ffprobe` | php-fpm | |
+| `php-reload` | php-fpm | graceful FPM pool reload (`php-fpm8.5 -t` then USR2 to master) |
 | `mysql`, `mariadb` | mariadb | root creds pulled from `.env` automatically |
 | `mysqldump`, `mariadb-dump` | mariadb | adds `--single-transaction` |
 | `redis-cli` | redis | |
 | `node`, `npm`, `npx`, `yarn` | node | |
+| `nginx -t`, `nginx -s reload`, `nginx-reload` | nginx | test config / graceful reload (no downtime) |
+| `nginx-restart` | nginx | full container restart (`podman restart nginx`) — **drops connections** |
 | `pod-exec <container> <cmd>` | any | escape hatch for arbitrary commands |
 
 Example session:
@@ -428,6 +431,8 @@ wp --path=/var/www/pressabl/public_html core version
 mysqldump pressabl | gzip > /var/databases/pressabl.sql.gz
 ffmpeg -i video.mov video.webm
 redis-cli ping
+nginx -t && nginx-reload     # test + graceful reload after editing a server block
+php-reload                   # reload FPM pool config after changing fpm-www.conf
 ```
 
 * * *

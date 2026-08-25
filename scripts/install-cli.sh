@@ -16,13 +16,15 @@ mkdir -p "$DEST_DIR"
 
 COMMANDS=(
   # PHP container
-  php composer wp artisan ffmpeg ffprobe
+  php composer wp artisan ffmpeg ffprobe php-reload
   # MariaDB container
   mariadb mysql mysqldump mariadb-dump
   # Redis container
   redis-cli
   # Node container
   node npm npx yarn
+  # Nginx container
+  nginx nginx-test nginx-reload nginx-restart
 )
 
 for c in "${COMMANDS[@]}"; do
