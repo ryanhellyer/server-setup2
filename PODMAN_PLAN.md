@@ -251,8 +251,8 @@ handles their platform.
 
 ### Production
 
-**Emergency path (no docs needed)** — installs packages, sets up the GitHub SSH
-key (prompts you to add it), clones the repo and deploys, all in one command:
+**Emergency path (no docs needed)** — installs packages, downloads the repo as a
+tarball (public repo — no SSH keys, no git) and deploys, all in one command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/install.sh \
@@ -263,19 +263,13 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/inst
 
 ```bash
 sudo ./scripts/bootstrap.sh              # one-time: packages + dirs
-# 1. Make an SSH key SPECIFIC to this server (not your personal key):
-#      ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N "" -C "server-setup-deploy"
-#      cat /root/.ssh/id_ed25519.pub
-# 2. Add that public key in the GitHub console:
-#      - this repo only: repo Settings -> Deploy keys -> Add deploy key
-#      - account-wide:   github.com/settings/keys -> New SSH key
-#    ssh -T git@github.com            # verify
-# 3. Clone yourself (no script does this):
-git clone git@github.com:<you>/server-setup.git /opt/server-setup
+mkdir -p /opt/server-setup
+curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # fill secrets, DEPLOY_ENV=production
 # apply Hetzner sshfs mounts (fstab / automount)
-sudo ./scripts/deploy.sh                 # git pull -> nginx -t -> compose up -d --build
+sudo ./deploy.sh                         # refresh files -> nginx -t -> compose up -d --build
                                          # (also installs systemd units for boot-start)
 sudo ./scripts/certbot-issue.sh          # request TLS for every domain
 sudo ./scripts/restore.sh                # restore DBs + site files from the latest backup
@@ -293,13 +287,12 @@ are cached**.
 
 ```bash
 sudo ./scripts/bootstrap.sh
-# make a server-specific key and add it to the GitHub console, then clone:
-#   ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N "" -C "server-setup-deploy"
-#   cat /root/.ssh/id_ed25519.pub    -> repo Settings -> Deploy keys (or github.com/settings/keys)
-git clone git@github.com:<you>/server-setup.git /opt/server-setup
+mkdir -p /opt/server-setup
+curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
-sudo ./scripts/deploy.sh                 # builds + starts the whole stack
+sudo ./deploy.sh                         # builds + starts the whole stack
 sudo ./scripts/test-site.sh              # scaffold the ionos.hellyer.kiwi test page
 sudo ./scripts/certbot-issue.sh          # REAL cert for ionos.hellyer.kiwi only
 # point DNS ionos.hellyer.kiwi at this box, then open https://ionos.hellyer.kiwi
@@ -366,10 +359,10 @@ Applied **at deploy time** (documented here so you don't forget):
 
 | Script | What it does |
 |---|---|
-| `install.sh` | Emergency one-shot: installs packages, sets up the GitHub SSH key (prompts you), clones the repo, then runs `deploy.sh`. |
+| `install.sh` | Emergency one-shot: installs packages, downloads the repo as a tarball (public repo — no git/keys), then runs `deploy.sh`. |
 | `scripts/host-setup.sh` | Installs the host package set + creates bind-mount dirs (called by install.sh/bootstrap.sh and auto by deploy.sh). |
 | `scripts/bootstrap.sh` | One-time host setup + prints the key/clone/deploy next steps. |
-| `deploy.sh` (root) | MAIN entry point: auto-installs podman if missing, creates + opens `.env` in nano, `git pull`, `nginx -t`, `compose up -d --build`, systemd units. |
+| `deploy.sh` (root) | MAIN entry point: auto-installs podman if missing, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), `nginx -t`, `compose up -d --build`, systemd units. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
 | `scripts/backup.sh` | Dumps all DBs, archives `/var/www`, prunes 14 days, rsyncs to Hetzner. |
 | `scripts/restore.sh` | Restores the latest DB dump + `/var/www` archive from `/var/databases` (no-op if none exist yet). |

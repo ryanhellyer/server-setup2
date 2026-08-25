@@ -1,6 +1,9 @@
 # Secrets
 .env
 
+# Runtime marker (install.sh writes this to mark a tarball install)
+.tarball
+
 # Certificates (issued on the server)
 env/letsencrypt/
 

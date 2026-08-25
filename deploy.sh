@@ -25,8 +25,9 @@ cd "$(dirname "$0")"
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo ./deploy.sh)."; exit 1; }
 
 # ---- 1. host packages (podman etc.) ----
-if ! command -v podman >/dev/null 2>&1 || ! command -v podman-compose >/dev/null 2>&1; then
-  echo "==> podman/podman-compose not found — installing host packages first"
+if ! command -v podman >/dev/null 2>&1 || ! command -v podman-compose >/dev/null 2>&1 \
+   || ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+  echo "==> podman/podman-compose/curl/tar not all present — installing host packages first"
   bash scripts/host-setup.sh
 else
   mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
