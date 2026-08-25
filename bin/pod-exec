@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# =============================================================================
+# pod-exec — run a CLI command inside the right container, transparently from
+# the host shell. This single script serves every command name it is symlinked
+# as (see scripts/install-cli.sh).
+#
+# Installed commands -> container:
+#   php, composer, wp, artisan, ffmpeg, ffprobe  -> php-fpm   (runs as www-data)
+#   mariadb, mysql, mysqldump, mariadb-dump      -> mariadb   (root creds from .env)
+#   redis-cli                                    -> redis
+#   node, npm, npx, yarn                         -> node
+#
+# Usage from the host (as root):
+#   php -v
+#   composer install
+#   artisan migrate                 # runs `php artisan` in the current dir
+#   wp core version
+#   ffmpeg -i in.mp4 out.avi
+#   mariadb -e 'SHOW DATABASES;'
+#   mysqldump pressabl > /var/databases/pressabl.sql
+#   redis-cli ping
+#   npm install
+#
+# Invoked directly as `pod-exec` it runs an arbitrary command in any container:
+#   pod-exec php-fpm php -m
+#
+# Note: the host cwd is mirrored into the container when you are under
+# /var/www (paths match inside the container). PHP tooling runs as www-data so
+# file ownership stays consistent with what nginx/php-fpm expect.
+# =============================================================================
+set -euo pipefail
+
+NAME="$(basename "$0")"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# ---- command -> container + binary mapping ----
+if [ "$NAME" = "pod-exec" ]; then
+  CONTAINER="${1:?usage: pod-exec <container> <command> [args...]}"
+  shift
+  BIN="${1:?usage: pod-exec <container> <command> [args...]}"
+  shift
+else
+  case "$NAME" in
+    php|composer|wp|artisan|ffmpeg|ffprobe)
+      CONTAINER="php-fpm"; BIN="$NAME"
+      [ "$NAME" = "artisan" ] && BIN="php" ;;
+    mariadb|mysql|mysqldump|mariadb-dump)
+      CONTAINER="mariadb"; BIN="$NAME" ;;
+    redis-cli)
+      CONTAINER="redis"; BIN="redis-cli" ;;
+    node|npm|npx|yarn)
+      CONTAINER="node"; BIN="$NAME" ;;
+    *)
+      echo "pod-exec: '$NAME' is not a known command." >&2
+      echo "Known: php composer wp artisan ffmpeg ffprobe | mysql mariadb mysqldump mariadb-dump | redis-cli | node npm npx yarn" >&2
+      exit 127 ;;
+  esac
+fi
+
+# ---- mirror the host cwd into the container when under /var/www ----
+EXEC_OPTS=()
+if [[ "$PWD" == /var/www/* ]]; then
+  EXEC_OPTS+=(-w "$PWD")
+fi
+
+# ---- TTY handling (interactive terminal vs piped/scripted use) ----
+if [[ -t 0 ]]; then
+  EXEC_OPTS+=(-it)
+else
+  EXEC_OPTS+=(-i)
+fi
+
+# ---- PHP tooling runs as www-data so file ownership stays consistent ----
+if [ "$CONTAINER" = "php-fpm" ]; then
+  EXEC_OPTS+=(-u www-data)
+fi
+
+# ---- DB credentials pulled from the repo .env when present ----
+if [ "$CONTAINER" = "mariadb" ]; then
+  [ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a
+  case "$NAME" in
+    mariadb|mysql)
+      if [[ -n "${MARIADB_ROOT_PASSWORD:-}" ]]; then
+        set -- -uroot -p"$MARIADB_ROOT_PASSWORD" "$@"
+      else
+        set -- -uroot "$@"
+      fi ;;
+    mysqldump|mariadb-dump)
+      if [[ -n "${MARIADB_ROOT_PASSWORD:-}" ]]; then
+        set -- -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction "$@"
+      else
+        set -- -uroot --single-transaction "$@"
+      fi ;;
+  esac
+fi
+
+# ---- `artisan` is `php artisan` in the current directory ----
+if [ "$NAME" = "artisan" ]; then
+  set -- artisan "$@"
+fi
+
+exec podman exec "${EXEC_OPTS[@]}" "$CONTAINER" "$BIN" "$@"

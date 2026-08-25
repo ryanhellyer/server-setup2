@@ -1,0 +1,13 @@
+# Node.js container — base image only.
+# Node apps (chat.hellyer.kiwi currently) are bind-mounted from /var/www.
+#
+# chat.hellyer.kiwi runs on port 3000 (see the node-app upstream in nginx.conf).
+# To run a different app, override the command in compose.yaml, e.g.:
+#   command: ["node", "/var/www/myapp/server.js"]
+
+FROM node:22-slim
+
+WORKDIR /var/www
+
+EXPOSE 3000
+CMD ["node", "server.js"]

@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Certificates (issued on the server)
+env/letsencrypt/
+
+# Generated site scaffolds / backups
+maria/init/*.sql
+!maria/init/example.sql
+
+# Local logs / caches
+*.log
