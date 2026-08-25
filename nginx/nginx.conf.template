@@ -58,7 +58,7 @@ http {
 	# keys_zone size is RAM for cache keys (64m on test; override with
 	# FASTCGI_CACHE_SIZE in .env). max_size caps the on-disk cache.
 	##
-	fastcgi_cache_path /var/cache/nginx levels=1:2 keys_zone=PRESSABL:64m inactive=60m max_size=5g;
+	fastcgi_cache_path /var/cache/nginx levels=1:2 keys_zone=PRESSABL:__FASTCGI_CACHE_SIZE__ inactive=60m max_size=5g;
 	fastcgi_cache_key "$scheme$request_method$host$request_uri|$cache_locale";
 	fastcgi_cache_use_stale error timeout invalid_header http_500;
 

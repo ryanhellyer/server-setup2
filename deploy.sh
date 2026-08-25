@@ -11,10 +11,15 @@
 #   2. Creates .env from .env.example if missing, then opens it in nano for
 #      you to fill in the secrets (save & exit to continue).
 #   3. git pull (or re-download the files for a tarball install).
-#   4. Bootstraps a self-signed cert so nginx boots before certbot runs.
-#   5. Builds the nginx image and runs nginx -t against the repo config.
-#   6. podman compose up -d --build.
-#   7. Installs systemd units so the stack starts at boot.
+#   4. Renders nginx.conf from the template (.env-driven values).
+#   5. Bootstraps a self-signed cert so nginx boots before certbot runs.
+#   6. Creates log dirs the config references.
+#   7. TEST MODE ONLY (DEPLOY_ENV=test): seeds placeholder sites and generates
+#      a temporary self-signed cert covering every domain — skipped entirely
+#      in production, so nothing needs removing for prod.
+#   8. Builds the nginx image and runs nginx -t against the repo config.
+#   9. podman compose up -d --build.
+#   10. Installs systemd units so the stack starts at boot.
 #
 # After first deploy: sudo ./scripts/test-site.sh, sudo ./scripts/certbot-issue.sh,
 # then point DNS at this host.
@@ -40,6 +45,10 @@ if [ ! -f .env ]; then
   echo "==> Opening it in ${EDITOR:-nano} — fill in the secrets, then save & exit."
   "${EDITOR:-nano}" .env
 fi
+# shellcheck disable=SC1091
+set -a && . ./.env && set +a
+DEPLOY_ENV="${DEPLOY_ENV:-test}"
+echo "==> Deployment mode: $DEPLOY_ENV"
 
 # ---- 3. refresh files ----
 # Tarball install (.tarball marker) -> re-download. Git clone -> git pull.
@@ -75,7 +84,10 @@ else
   COMPOSE=(podman-compose)
 fi
 
-# ---- 4. bootstrap TLS cert (nginx -t needs ssl files to exist) ----
+# ---- 4. render nginx.conf from the template (.env-driven values) ----
+"$PWD/scripts/render-config.sh"
+
+# ---- 5. bootstrap TLS cert (nginx -t needs ssl files to exist) ----
 CERT_DIR="env/letsencrypt/live/pressabl12.hellyer.kiwi"
 if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
   echo "==> no TLS cert yet — generating bootstrap self-signed cert"
@@ -85,7 +97,7 @@ if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
     -subj "/CN=pressabl12.hellyer.kiwi"
 fi
 
-# ---- 5. create log dirs referenced by the nginx config ----
+# ---- 6. create log dirs referenced by the nginx config ----
 # nginx -t fails if a static access_log/error_log path's parent dir is missing,
 # so create every log directory the config references (works on a fresh box
 # before the sites have been migrated in).
@@ -98,13 +110,20 @@ if [ -n "$LOG_DIRS" ]; then
   mkdir -p $LOG_DIRS
 fi
 
-# ---- 6. seed temporary placeholder sites for any empty roots ----
-# Fresh/test servers have no site content yet — drop a placeholder page in
-# every empty web root so any configured domain resolves instead of 404ing.
-# Never overwrites existing content.
-"$PWD/scripts/seed-test-sites.sh"
+# ---- 7. TEST MODE: fake sites + temporary certs ----
+# Nothing here runs in production — set DEPLOY_ENV=production in .env and
+# these steps are skipped automatically (no manual code removal needed).
+if [ "$DEPLOY_ENV" = "test" ]; then
+  # Temporary placeholder pages in every empty web root, so any configured
+  # domain resolves instead of 404ing. Never overwrites existing content.
+  "$PWD/scripts/seed-test-sites.sh"
 
-# ---- 7. build + test nginx config ----
+  # Temporary self-signed cert whose SANs cover every vhost domain, so each
+  # test site has a matching certificate. certbot replaces this in production.
+  "$PWD/scripts/gen-test-certs.sh"
+fi
+
+# ---- 8. build + test nginx config ----
 echo "==> build nginx image (used for config validation)"
 IMAGE_ID="$(podman build -q ./nginx)"
 
@@ -115,11 +134,11 @@ podman run --rm \
   -v /var/www:/var/www \
   "$IMAGE_ID" nginx -t
 
-# ---- 8. compose up ----
+# ---- 9. compose up ----
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
-# ---- 9. systemd units ----
+# ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"
 
