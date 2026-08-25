@@ -3,6 +3,7 @@
 
 # Runtime marker (install.sh writes this to mark a tarball install)
 .tarball
+.last-sha
 
 # Certificates (issued on the server)
 env/letsencrypt/

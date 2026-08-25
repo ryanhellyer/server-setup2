@@ -56,21 +56,31 @@ echo "==> Deployment mode: $DEPLOY_ENV"
 echo "==> refresh files (tarball re-download, or git pull for git installs)"
 if [ -f .tarball ]; then
   TARBALL_URL="$(cat .tarball)"
-  echo "  (tarball install — downloading the latest files from GitHub)"
+  LAST_SHA="$(cat .last-sha 2>/dev/null || true)"
+  echo "  (tarball install — checking for updates)"
   # Resolve the live branch SHA first: SHA tarballs are immutable, so a
-  # CDN-cached stale branch tarball is never used.
+  # CDN-cached stale branch tarball is never used. If it matches what's
+  # already applied, skip the download.
   if [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/refs/heads/([^/]+)\.tar\.gz$ ]]; then
     owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"; branch="${BASH_REMATCH[3]}"
     sha="$(curl -fsSL "https://api.github.com/repos/$owner/$repo/commits/$branch" 2>/dev/null \
       | sed -n 's/.*"sha": "\([a-f0-9]\{40\}\)".*/\1/p' | head -1)"
     if [ -n "$sha" ]; then
-      echo "  (resolved $branch @ ${sha:0:7})"
-      TARBALL_URL="https://github.com/$owner/$repo/archive/$sha.tar.gz"
+      if [ "$sha" = "$LAST_SHA" ]; then
+        echo "  (already at ${sha:0:7} — no update needed)"
+        skip_refresh=1
+      else
+        echo "  (resolved $branch @ ${sha:0:7})"
+        TARBALL_URL="https://github.com/$owner/$repo/archive/$sha.tar.gz"
+      fi
     fi
   fi
-  curl -fsSL "$TARBALL_URL" -o /tmp/server-setup.tar.gz
-  tar -xzf /tmp/server-setup.tar.gz --strip-components=1 -C "$PWD"
-  rm -f /tmp/server-setup.tar.gz
+  if [ "${skip_refresh:-0}" != "1" ]; then
+    curl -fsSL "$TARBALL_URL" -o /tmp/server-setup.tar.gz
+    tar -xzf /tmp/server-setup.tar.gz --strip-components=1 -C "$PWD"
+    rm -f /tmp/server-setup.tar.gz
+    [ -n "${sha:-}" ] && printf '%s\n' "$sha" > .last-sha
+  fi
 elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -n "$(git remote 2>/dev/null)" ]; then
   git pull --ff-only
 else

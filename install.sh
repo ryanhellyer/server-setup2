@@ -98,6 +98,7 @@ say "Downloading the server-setup files from GitHub"
 mkdir -p "$REPO_DIR"
 # Resolve the live branch SHA first: SHA tarballs are immutable, so a
 # CDN-cached stale branch tarball is never used.
+sha=""
 if [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/refs/heads/([^/]+)\.tar\.gz$ ]]; then
   owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"; branch="${BASH_REMATCH[3]}"
   sha="$(curl -fsSL "https://api.github.com/repos/$owner/$repo/commits/$branch" 2>/dev/null \
@@ -114,6 +115,9 @@ rm -f /tmp/server-setup.tar.gz
 # Remember how we were installed so deploy.sh can refresh the same way.
 printf '%s\n' "$TARBALL_URL" > "$REPO_DIR/.tarball"
 chmod 600 "$REPO_DIR/.tarball"
+
+# Record which SHA we applied, so deploy.sh can skip re-downloading it.
+[ -n "$sha" ] && printf '%s\n' "$sha" > "$REPO_DIR/.last-sha"
 
 [ -f "$REPO_DIR/deploy.sh" ] || { echo "Download failed — no deploy.sh found in the tarball."; exit 1; }
 ok "Files installed at $REPO_DIR"
