@@ -48,6 +48,17 @@ echo "==> refresh files (tarball re-download, or git pull for git installs)"
 if [ -f .tarball ]; then
   TARBALL_URL="$(cat .tarball)"
   echo "  (tarball install — downloading the latest files from GitHub)"
+  # Resolve the live branch SHA first: SHA tarballs are immutable, so a
+  # CDN-cached stale branch tarball is never used.
+  if [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/refs/heads/([^/]+)\.tar\.gz$ ]]; then
+    owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"; branch="${BASH_REMATCH[3]}"
+    sha="$(curl -fsSL "https://api.github.com/repos/$owner/$repo/commits/$branch" 2>/dev/null \
+      | sed -n 's/.*"sha": "\([a-f0-9]\{40\}\)".*/\1/p' | head -1)"
+    if [ -n "$sha" ]; then
+      echo "  (resolved $branch @ ${sha:0:7})"
+      TARBALL_URL="https://github.com/$owner/$repo/archive/$sha.tar.gz"
+    fi
+  fi
   curl -fsSL "$TARBALL_URL" -o /tmp/server-setup.tar.gz
   tar -xzf /tmp/server-setup.tar.gz --strip-components=1 -C "$PWD"
   rm -f /tmp/server-setup.tar.gz
