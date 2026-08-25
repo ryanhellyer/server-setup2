@@ -7,7 +7,7 @@ lives in this repo.
 ## Install on a fresh Ubuntu server — one line
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install.sh \
   -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
@@ -33,7 +33,7 @@ sudo ./scripts/certbot-issue.sh  # real TLS for ionos.hellyer.kiwi (test mode)
 ```bash
 sudo ./scripts/bootstrap.sh            # one-time host setup (packages + dirs)
 mkdir -p /opt/server-setup
-curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz | \
+curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env && nano .env      # deploy.sh does this for you automatically

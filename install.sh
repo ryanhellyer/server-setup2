@@ -4,7 +4,7 @@
 #
 # Single-line usage on a bare Ubuntu host (no docs, no keys, no git):
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/install.sh \
+#   curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install.sh \
 #     -o /tmp/install.sh && sudo bash /tmp/install.sh
 #
 # What it does:
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 REPO_DIR="${SERVER_SETUP_DIR:-/opt/server-setup}"
-TARBALL_URL="${SERVER_SETUP_TARBALL:-https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz}"
+TARBALL_URL="${SERVER_SETUP_TARBALL:-https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz}"
 
 say()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 ok()   { printf '\033[1;32m[ok]\033[0m %s\n' "$*"; }

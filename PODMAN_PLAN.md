@@ -255,7 +255,7 @@ handles their platform.
 tarball (public repo — no SSH keys, no git) and deploys, all in one command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install.sh \
   -o /tmp/install.sh && sudo bash /tmp/install.sh
 ```
 
@@ -264,7 +264,7 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/main/inst
 ```bash
 sudo ./scripts/bootstrap.sh              # one-time: packages + dirs
 mkdir -p /opt/server-setup
-curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz | \
+curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # fill secrets, DEPLOY_ENV=production
@@ -288,7 +288,7 @@ are cached**.
 ```bash
 sudo ./scripts/bootstrap.sh
 mkdir -p /opt/server-setup
-curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/main.tar.gz | \
+curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
