@@ -37,6 +37,34 @@ fi
 EXTRA=()
 [ "$FORCE" = "1" ] && EXTRA=(--force-renewal)
 
+# ---- DNS pre-check (clear message instead of a cryptic Let's Encrypt failure) ----
+# Compare each cert domain's A record against this host's PUBLIC IP. LE must
+# reach this host on port 80 to validate, so if DNS isn't pointed, fail fast.
+ALL_DOMAINS="$(grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$' | cut -d' ' -f2-)"
+PUBLIC_IP="$(curl -fsSL --max-time 10 https://ifconfig.me 2>/dev/null \
+  || curl -fsSL --max-time 10 https://icanhazip.com 2>/dev/null || true)"
+
+if [ -n "$PUBLIC_IP" ] && [ -n "$ALL_DOMAINS" ]; then
+  dns_ok=1
+  for d in $ALL_DOMAINS; do
+    ip="$(getent ahosts "$d" 2>/dev/null | awk '{print $1}' | head -1 || true)"
+    if [ -z "$ip" ]; then
+      echo "  !! $d does not resolve yet"
+      dns_ok=0
+    elif [ "$ip" != "$PUBLIC_IP" ]; then
+      echo "  !! $d resolves to $ip — this host's public IP is $PUBLIC_IP"
+      dns_ok=0
+    fi
+  done
+  if [ "$dns_ok" = "0" ]; then
+    echo
+    echo "DNS is not pointed at this host yet. Point the domain(s) above at $PUBLIC_IP,"
+    echo "wait for propagation, then re-run:"
+    echo "  sudo ./scripts/certbot-issue.sh    (or: sudo ./deploy.sh)"
+    exit 1
+  fi
+fi
+
 grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$' | while read -r line; do
   cert_name="$(echo "$line" | awk '{print $1}')"
   domains="$(echo "$line" | cut -d' ' -f2-)"

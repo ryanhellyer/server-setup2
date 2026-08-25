@@ -6,6 +6,10 @@ lives in this repo.
 
 ## Install on a fresh Ubuntu server — one line
 
+**First, point DNS:** create an `A` record `ionos.hellyer.kiwi` → this host's IP.
+That's the one manual step (it lives in your DNS provider) — everything below is
+automatic.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install.sh \
   -o /tmp/install.sh && sudo bash /tmp/install.sh
@@ -18,17 +22,17 @@ That one command:
    the user already exists).
 3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
    so no SSH keys, no git, no GitHub console work are needed.
-4. **Deploys** — it creates `.env` and opens it in **nano** for you to fill in
-   secrets, builds the nginx + PHP images, brings up the whole stack, and
-   installs systemd units so it starts at boot.
+4. **Opens the firewall ports** 22/80/443 (added automatically; harmless if ufw
+   is off).
+5. **Deploys** — creates `.env` and opens it in **nano** for you to fill in
+   secrets, builds the nginx + PHP images, brings up the whole stack (nginx,
+   php-fpm, mariadb, redis, node), installs systemd units so it starts at boot,
+   and **issues the real TLS cert for `ionos.hellyer.kiwi` automatically** (it
+   checks DNS first — if DNS isn't propagated yet, it tells you exactly what to
+   do and you just re-run `sudo ./deploy.sh`).
 
-After that, point DNS `ionos.hellyer.kiwi` at the host and run:
-
-```bash
-cd /opt/server-setup
-sudo ./scripts/test-site.sh      # scaffold the ionos test page
-sudo ./scripts/certbot-issue.sh  # real TLS for ionos.hellyer.kiwi (test mode)
-```
+No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
+finishes.
 
 ## Manual path
 

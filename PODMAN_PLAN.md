@@ -293,6 +293,22 @@ are cached**.
 
 ### Test server (2 GB box)
 
+Point DNS `ionos.hellyer.kiwi` → this box's IP **first** (the only manual
+step), then everything is automatic:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install.sh \
+  -o /tmp/install.sh && sudo bash /tmp/install.sh
+```
+
+That one command installs packages, creates user `ryan`, downloads the files,
+opens firewall ports 22/80/443, builds + starts the whole stack, installs
+systemd units, and issues the real ionos cert (DNS-checked; if DNS isn't
+propagated yet it says so and you just re-run `sudo ./deploy.sh`). Then open
+`https://ionos.hellyer.kiwi`.
+
+Stepped equivalent:
+
 ```bash
 sudo ./scripts/bootstrap.sh
 mkdir -p /opt/server-setup
@@ -300,9 +316,8 @@ curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/maste
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
-sudo ./deploy.sh                         # builds + starts the whole stack
+sudo ./deploy.sh                         # builds + starts; opens ports; auto-certbot
 sudo ./scripts/test-site.sh              # scaffold the ionos.hellyer.kiwi test page
-sudo ./scripts/certbot-issue.sh          # REAL cert for ionos.hellyer.kiwi only
 # point DNS ionos.hellyer.kiwi at this box, then open https://ionos.hellyer.kiwi
 ```
 
@@ -370,11 +385,11 @@ Applied **at deploy time** (documented here so you don't forget):
 | `install.sh` | Emergency one-shot: installs packages, downloads the repo as a tarball (public repo — no git/keys), then runs `deploy.sh`. |
 | `scripts/host-setup.sh` | Installs the host package set + creates bind-mount dirs (called by install.sh/bootstrap.sh and auto by deploy.sh). |
 | `scripts/bootstrap.sh` | One-time host setup + prints the key/clone/deploy next steps. |
-| `deploy.sh` (root) | MAIN entry point: auto-installs podman if missing, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), `nginx -t`, `compose up -d --build`, systemd units. |
+| `deploy.sh` (root) | MAIN entry point: auto-installs podman if missing, opens firewall ports 22/80/443, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
 | `scripts/backup.sh` | Dumps all DBs, archives `/var/www`, prunes 14 days, rsyncs to Hetzner. |
 | `scripts/restore.sh` | Restores the latest DB dump + `/var/www` archive from `/var/databases` (no-op if none exist yet). |
-| `scripts/certbot-issue.sh` | Issues/renews certs from `CERTBOT_DOMAINS_FILE` (test = `domains.test.txt`) via the webroot challenge; links the cert into the path nginx serves. |
+| `scripts/certbot-issue.sh` | Checks DNS is pointed at this host (clear error if not), then issues/renews certs from `CERTBOT_DOMAINS_FILE` (test = `domains.test.txt`) via the webroot challenge; links the cert into the path nginx serves. |
 | `scripts/test-site.sh` | Scaffolds the ionos.hellyer.kiwi diagnostics page into `/var/www` and reloads nginx. |
 | `scripts/install-cli.sh` | Installs host-side CLI wrappers (see below). |
 | `scripts/install-systemd.sh` | Generates + enables `container-*.service` units so the stack auto-starts at boot (called by deploy.sh). |

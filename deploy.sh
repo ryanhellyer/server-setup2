@@ -38,6 +38,15 @@ else
   mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
 fi
 
+# ---- 1b. firewall: always allow the ports the site + certbot need ----
+# Harmless if ufw isn't enabled; rules stay dormant until it is.
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow 22/tcp   >/dev/null 2>&1 || true
+  ufw allow 80/tcp   >/dev/null 2>&1 || true
+  ufw allow 443/tcp  >/dev/null 2>&1 || true
+  echo "==> firewall rules ensured (22, 80, 443/tcp)"
+fi
+
 # ---- 2. .env (create + open for editing) ----
 if [ ! -f .env ]; then
   cp .env.example .env
@@ -151,6 +160,20 @@ echo "==> bring the stack up (build + start)"
 # ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"
+
+# ---- 11. TEST MODE: issue the real TLS cert automatically ----
+# Test mode configures a real Let's Encrypt cert for the domains in
+# CERTBOT_DOMAINS_FILE (ionos.hellyer.kiwi). Requires DNS to be pointed at
+# this host — certbot-issue.sh checks that first and tells you exactly what to
+# do if it isn't. The stack is already up either way.
+if [ "$DEPLOY_ENV" = "test" ]; then
+  echo "==> issuing the real TLS cert (test mode)"
+  if "$PWD/scripts/certbot-issue.sh"; then
+    echo "==> real TLS cert issued for the test domain"
+  else
+    echo "==> (cert not issued — see the message above; point DNS, then re-run: sudo ./deploy.sh)"
+  fi
+fi
 
 echo
 echo "Deploy complete."

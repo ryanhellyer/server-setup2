@@ -13,8 +13,10 @@
 #   3. Downloads this whole repo as a tarball from GitHub (public repo — no SSH
 #      keys needed) into /opt/server-setup and writes a .tarball marker so
 #      deploy.sh can refresh the files the same way later.
-#   4. Hands off to ./deploy.sh, which refreshes the files, creates .env (opens
-#      it in nano for you), builds the images and starts the whole stack.
+#   4. Hands off to ./deploy.sh, which opens the firewall ports (22/80/443),
+#      refreshes the files, creates .env (opens it in nano for you), builds the
+#      images, starts the stack, and — if DNS for ionos.hellyer.kiwi points at
+#      this host — issues the real TLS cert automatically.
 #
 # Safe to re-run — every step is idempotent, and your .env / TLS certs are
 # never touched (they aren't in the tarball).
