@@ -174,7 +174,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
       php8.5-fpm php8.5-cli php8.5-mysql php8.5-mbstring php8.5-zip php8.5-intl \
       php8.5-imagick php8.5-gd php8.5-curl php8.5-xml php8.5-redis php8.5-sqlite3 \
-      ffmpeg \
+      ffmpeg imagemagick ghostscript poppler-utils zip unzip sqlite3 \
     && curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /usr/local/bin/wp \
        && chmod +x /usr/local/bin/wp
@@ -413,11 +413,13 @@ Then, from the host (as root):
 | `artisan <cmd>` | php-fpm | `php artisan …` in the current site dir |
 | `wp <cmd>` | php-fpm | WP-CLI (now in the PHP image) |
 | `ffmpeg`, `ffprobe` | php-fpm | |
+| `convert`, `identify`, `compare`, `montage` | php-fpm | ImageMagick 6 CLI |
+| `zip`, `unzip`, `sqlite3`, `gs`, `pdftoppm` | php-fpm | archive / SQLite / PDF tools |
 | `php-reload` | php-fpm | graceful FPM pool reload (`php-fpm8.5 -t` then USR2 to master) |
 | `mysql`, `mariadb` | mariadb | root creds pulled from `.env` automatically |
 | `mysqldump`, `mariadb-dump` | mariadb | adds `--single-transaction` |
 | `redis-cli` | redis | |
-| `node`, `npm`, `npx`, `yarn` | node | |
+| `node`, `npm`, `npx` | node | |
 | `nginx -t`, `nginx -s reload`, `nginx-reload` | nginx | test config / graceful reload (no downtime) |
 | `nginx-restart` | nginx | full container restart (`podman restart nginx`) — **drops connections** |
 | `pod-exec <container> <cmd>` | any | escape hatch for arbitrary commands |
@@ -433,6 +435,8 @@ ffmpeg -i video.mov video.webm
 redis-cli ping
 nginx -t && nginx-reload     # test + graceful reload after editing a server block
 php-reload                   # reload FPM pool config after changing fpm-www.conf
+convert input.png -resize 800x output.jpg
+pdftoppm -png -r 150 doc.pdf page
 ```
 
 * * *

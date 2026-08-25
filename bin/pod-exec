@@ -6,10 +6,13 @@
 #
 # Installed commands -> container:
 #   php, composer, wp, artisan, ffmpeg, ffprobe  -> php-fpm   (runs as www-data)
+#   convert, identify, compare, montage          -> php-fpm   (ImageMagick 6 CLI)
+#   zip, unzip, sqlite3                          -> php-fpm
+#   gs, pdftoppm                                 -> php-fpm   (Ghostscript / poppler)
 #   php-reload                                   -> php-fpm   (reloads FPM pool; runs as root)
 #   mariadb, mysql, mysqldump, mariadb-dump      -> mariadb   (root creds from .env)
 #   redis-cli                                    -> redis
-#   node, npm, npx, yarn                         -> node
+#   node, npm, npx                               -> node
 #   nginx, nginx-test, nginx-reload              -> nginx     (nginx -s reload etc.)
 #   nginx-restart                                -> nginx     (host-level podman restart nginx)
 #
@@ -48,7 +51,7 @@ if [ "$NAME" = "pod-exec" ]; then
   shift
 else
   case "$NAME" in
-    php|composer|wp|artisan|ffmpeg|ffprobe)
+    php|composer|wp|artisan|ffmpeg|ffprobe|convert|identify|compare|montage|zip|unzip|sqlite3|gs|pdftoppm)
       CONTAINER="php-fpm"; BIN="$NAME"
       [ "$NAME" = "artisan" ] && BIN="php" ;;
     php-reload)
@@ -58,7 +61,7 @@ else
       CONTAINER="mariadb"; BIN="$NAME" ;;
     redis-cli)
       CONTAINER="redis"; BIN="redis-cli" ;;
-    node|npm|npx|yarn)
+    node|npm|npx)
       CONTAINER="node"; BIN="$NAME" ;;
     nginx)
       CONTAINER="nginx"; BIN="nginx" ;;
@@ -71,7 +74,7 @@ else
       CONTAINER="nginx" ;;
     *)
       echo "pod-exec: '$NAME' is not a known command." >&2
-      echo "Known: php composer wp artisan ffmpeg ffprobe php-reload | mysql mariadb mysqldump mariadb-dump | redis-cli | node npm npx yarn | nginx nginx-test nginx-reload nginx-restart" >&2
+      echo "Known: php composer wp artisan ffmpeg ffprobe php-reload convert identify compare montage zip unzip sqlite3 gs pdftoppm | mysql mariadb mysqldump mariadb-dump | redis-cli | node npm npx | nginx nginx-test nginx-reload nginx-restart" >&2
       exit 127 ;;
   esac
 fi

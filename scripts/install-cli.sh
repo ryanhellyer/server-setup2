@@ -17,12 +17,14 @@ mkdir -p "$DEST_DIR"
 COMMANDS=(
   # PHP container
   php composer wp artisan ffmpeg ffprobe php-reload
+  convert identify compare montage
+  zip unzip sqlite3 gs pdftoppm
   # MariaDB container
   mariadb mysql mysqldump mariadb-dump
   # Redis container
   redis-cli
   # Node container
-  node npm npx yarn
+  node npm npx
   # Nginx container
   nginx nginx-test nginx-reload nginx-restart
 )
