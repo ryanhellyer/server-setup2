@@ -89,11 +89,22 @@ if [ -f .tarball ]; then
     tar -xzf /tmp/server-setup.tar.gz --strip-components=1 -C "$PWD"
     rm -f /tmp/server-setup.tar.gz
     [ -n "${sha:-}" ] && printf '%s\n' "$sha" > .last-sha
+    REFRESHED=1
   fi
 elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -n "$(git remote 2>/dev/null)" ]; then
   git pull --ff-only
+  REFRESHED=1
 else
   echo "  (local checkout — deploying what's here)"
+fi
+
+# The running copy of deploy.sh is one version behind what we just extracted.
+# Re-exec the freshly-downloaded deploy.sh so the LATEST logic runs this
+# invocation (DEPLOY_REEXEC guards against a loop; the .last-sha match makes
+# the refresh a no-op on the re-run).
+if [ "${REFRESHED:-0}" = "1" ] && [ "${DEPLOY_REEXEC:-0}" != "1" ]; then
+  echo "==> files updated — re-running with the latest deploy.sh"
+  exec env DEPLOY_REEXEC=1 bash "$PWD/deploy.sh"
 fi
 
 # Prefer `podman compose`, fall back to `podman-compose`.
