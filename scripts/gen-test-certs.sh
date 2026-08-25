@@ -12,6 +12,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CERT_DIR="env/letsencrypt/live/pressabl12.hellyer.kiwi"
+
+# If a real (certbot-issued) cert is already in place — either linked here
+# (pressabl12 -> ionos...) or a real dir with a chain.pem — never clobber it
+# with a temporary self-signed cert. certbot-issued certs always ship chain.pem;
+# the temporary self-signed cert does not.
+if [ -L "$CERT_DIR" ] || [ -f "$CERT_DIR/chain.pem" ]; then
+  echo "Real (certbot) certificate already in place — skipping temporary self-signed cert."
+  exit 0
+fi
+
 mkdir -p "$CERT_DIR"
 
 # Collect every server_name from the joined vhost blocks.

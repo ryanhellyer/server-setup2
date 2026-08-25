@@ -29,6 +29,10 @@ else
 fi
 
 for c in "${CONTAINERS[@]}"; do
+  if ! podman container exists "$c" 2>/dev/null; then
+    echo "  (container '$c' not running yet — skipping its unit; re-run after compose up)"
+    continue
+  fi
   echo "==> Generating systemd unit for $c"
   if ! podman generate systemd --name "$c" --files >/dev/null 2>&1; then
     podman generate systemd --name "$c" > "$SYSTEMD_DIR/container-$c.service"
@@ -47,6 +51,9 @@ EOF
 systemctl daemon-reload
 
 for c in "${CONTAINERS[@]}"; do
+  if ! podman container exists "$c" 2>/dev/null; then
+    continue
+  fi
   echo "==> Enabling container-$c.service"
   systemctl enable "container-$c.service" >/dev/null 2>&1
   systemctl start "container-$c.service" 2>/dev/null || true
