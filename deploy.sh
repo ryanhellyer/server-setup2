@@ -74,18 +74,31 @@ if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
     -subj "/CN=pressabl12.hellyer.kiwi"
 fi
 
-# ---- 5. build + test nginx config ----
+# ---- 5. create log dirs referenced by the nginx config ----
+# nginx -t fails if a static access_log/error_log path's parent dir is missing,
+# so create every log directory the config references (works on a fresh box
+# before the sites have been migrated in).
+echo "==> creating log directories referenced by the nginx config"
+LOG_DIRS="$( { grep -rhoE '^\s*(access_log|error_log) [^;]+;' nginx/nginx.conf nginx/conf.d nginx/snippets 2>/dev/null; } \
+  | sed -E 's/^\s*(access_log|error_log) +([^ ]+).*/\2/' \
+  | grep '^/' | xargs -r -n1 dirname | sort -u )"
+if [ -n "$LOG_DIRS" ]; then
+  # shellcheck disable=SC2086
+  mkdir -p $LOG_DIRS
+fi
+
+# ---- 6. build + test nginx config ----
 echo "==> build nginx image (used for config validation)"
 IMAGE_ID="$(podman build -q ./nginx)"
 
 echo "==> nginx -t against the repo config"
 podman run --rm -v "$PWD/nginx:/etc/nginx:ro" -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" "$IMAGE_ID" nginx -t
 
-# ---- 6. compose up ----
+# ---- 7. compose up ----
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
-# ---- 7. systemd units ----
+# ---- 8. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"
 
