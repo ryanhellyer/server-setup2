@@ -98,18 +98,28 @@ if [ -n "$LOG_DIRS" ]; then
   mkdir -p $LOG_DIRS
 fi
 
-# ---- 6. build + test nginx config ----
+# ---- 6. seed temporary placeholder sites for any empty roots ----
+# Fresh/test servers have no site content yet — drop a placeholder page in
+# every empty web root so any configured domain resolves instead of 404ing.
+# Never overwrites existing content.
+"$PWD/scripts/seed-test-sites.sh"
+
+# ---- 7. build + test nginx config ----
 echo "==> build nginx image (used for config validation)"
 IMAGE_ID="$(podman build -q ./nginx)"
 
 echo "==> nginx -t against the repo config"
-podman run --rm -v "$PWD/nginx:/etc/nginx:ro" -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" "$IMAGE_ID" nginx -t
+podman run --rm \
+  -v "$PWD/nginx:/etc/nginx:ro" \
+  -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" \
+  -v /var/www:/var/www \
+  "$IMAGE_ID" nginx -t
 
-# ---- 7. compose up ----
+# ---- 8. compose up ----
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
-# ---- 8. systemd units ----
+# ---- 9. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"
 
