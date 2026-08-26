@@ -4,7 +4,7 @@
 # bind-mount directories. Run once as root.
 #
 # Called by:
-#   - bootstrap.sh (one-time host setup)
+#   - setup.sh (fresh-host one-time setup)
 #   - deploy.sh    (automatically, when podman/podman-compose are missing)
 # =============================================================================
 set -euo pipefail

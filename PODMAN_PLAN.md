@@ -91,7 +91,7 @@ server-setup/
 |   |-- domains.test.txt         # test list: only ionos.hellyer.kiwi
 |   `-- README.md
 |-- scripts/
-|   |-- bootstrap.sh              # one-time host setup (packages + dirs)
+|   |-- host-setup.sh             # one-time host setup (packages + dirs + swap)
 |   |-- deploy.sh                 # full deploy: .env + refresh + render + nginx -t + compose up
 |   |-- new-site.sh               # scaffold a site into the joined blocks
 |   |-- backup.sh                 # dump DBs + archive site dirs to Hetzner
@@ -271,7 +271,7 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/se
 **Stepped path** (if you want to watch each stage):
 
 ```bash
-sudo ./scripts/bootstrap.sh              # one-time: packages + dirs
+sudo ./scripts/host-setup.sh           # one-time: packages + dirs + swap
 mkdir -p /opt/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
@@ -310,7 +310,7 @@ propagated yet it says so and you just re-run `sudo ./setup.sh`). Then open
 Stepped equivalent:
 
 ```bash
-sudo ./scripts/bootstrap.sh
+sudo ./scripts/host-setup.sh
 mkdir -p /opt/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
@@ -384,8 +384,7 @@ Applied **at deploy time** (documented here so you don't forget):
 | Script | What it does |
 |---|---|
 | `setup.sh` | THE entry point. Fresh host (curl\|bash): installs packages, creates the admin user, downloads the repo as a tarball (public repo — no git/keys), re-execs the installed copy. Installed server: interactive menu (deploy / new site / backup / restore / certs / test site / systemd / CLI tools / status / logs). |
-| `scripts/host-setup.sh` | Installs the host package set + creates bind-mount dirs (called by bootstrap.sh and auto by deploy.sh). |
-| `scripts/bootstrap.sh` | One-time host setup + prints the key/clone/deploy next steps. |
+| `scripts/host-setup.sh` | Installs the host package set + creates bind-mount dirs + ensures swap (called by setup.sh and auto by deploy.sh). |
 | `scripts/deploy.sh` | Full deploy: auto-installs podman if missing, opens firewall ports 22/80/443, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), renders nginx config, `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
 | `scripts/backup.sh` | Dumps all DBs, archives `/var/www`, prunes 14 days, rsyncs to Hetzner. |

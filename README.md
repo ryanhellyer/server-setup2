@@ -54,7 +54,7 @@ menu that delegates to the scripts in `scripts/`:
 ## Manual path
 
 ```bash
-sudo ./scripts/bootstrap.sh            # one-time host setup (packages + dirs)
+sudo ./scripts/host-setup.sh          # one-time host setup (packages + dirs + swap)
 mkdir -p /opt/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup

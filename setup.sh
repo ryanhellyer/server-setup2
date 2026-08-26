@@ -75,24 +75,11 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
     exit 1
   fi
 
-  say "Installing host packages (podman, podman-compose, curl, openssl, nano ...)"
+  say "Installing fetch tools (curl, tar, ca-certificates ...)"
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
-  apt-get install -y \
-    podman \
-    podman-compose \
-    curl \
-    tar \
-    rsync \
-    openssl \
-    openssh-client \
-    nano \
-    sshfs \
-    ufw \
-    unattended-upgrades
-
-  mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
-  ok "Host packages installed."
+  apt-get install -y curl tar ca-certificates
+  ok "Fetch tools installed."
 
   # ---- admin user ----
   if ask_yn "Create admin user 'ryan' with sudo privileges?"; then
@@ -145,6 +132,13 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
     say "Removing stale .git from an earlier git-clone install (tarball mode now)."
     rm -rf "$REPO_DIR/.git"
   fi
+
+  # ---- full host setup: packages + bind-mount dirs + swap ----
+  # (delegates to host-setup.sh so the package list lives in ONE place; also
+  # runs apt-get upgrade and creates a swapfile on small boxes.)
+  say "Running scripts/host-setup.sh (host packages, dirs, swap)"
+  bash "$REPO_DIR/scripts/host-setup.sh"
+  ok "Host packages installed."
 
   say "Re-running the installed copy to present the menu."
   cd "$REPO_DIR"
