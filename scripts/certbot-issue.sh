@@ -62,7 +62,7 @@ if [ -n "$ALL_DOMAINS" ]; then
     echo
     echo "DNS is not pointed at this host yet. Point the domain(s) above at your"
     echo "server's public IP, wait for propagation, then re-run:"
-    echo "  sudo ./scripts/certbot-issue.sh    (or: sudo ./deploy.sh)"
+    echo "  sudo bash scripts/certbot-issue.sh    (or: sudo ./setup.sh)"
     exit 1
   fi
 fi

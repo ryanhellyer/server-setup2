@@ -1,7 +1,7 @@
 # Secrets
 .env
 
-# Runtime marker (install.sh writes this to mark a tarball install)
+# Runtime marker (setup.sh writes this to mark a tarball install)
 .tarball
 .last-sha
 
