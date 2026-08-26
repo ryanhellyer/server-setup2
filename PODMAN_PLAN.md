@@ -373,7 +373,8 @@ Applied **at deploy time** (documented here so you don't forget):
     3306 to the host). Already the case in `compose.yaml`.
 *   **Backups off-host**: `scripts/backup.sh` offloads nightly dumps + a site
     archive to the Hetzner storage box.
-*   **TLS renewal**: run `scripts/certbot-issue.sh` on a cron timer.
+*   **TLS renewal**: auto-scheduled — `install-systemd.sh` installs the
+    `certbot-renew.timer` (2×/day) on every deploy.
 *   **Monitoring**: `podman ps` in a cron job, plus watch `/var/log/nginx/error.log`.
 
 * * *

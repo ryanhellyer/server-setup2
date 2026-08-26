@@ -34,5 +34,7 @@ sudo podman run --rm \
 ## Notes
 
 - Keep the `acme-challenge` location in `http-redirect.conf` on port 80.
-- Renewal is handled by running `certbot-issue.sh` (cron it if you like) or by
-  certbot's own timer when installed natively.
+- Renewal is automatic: `scripts/install-systemd.sh` installs the
+  `certbot-renew.timer` (runs `certbot-issue.sh` 2×/day) on every deploy —
+  no cron needed. The script only renews certs with <30 days left, so it
+  never hits Let's Encrypt rate limits.

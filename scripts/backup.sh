@@ -2,7 +2,16 @@
 # =============================================================================
 # backup.sh — nightly DB dump + site archive, pruned and offloaded to Hetzner.
 #
-# Add to cron:  0 3 * * * /path/to/server-setup/scripts/backup.sh
+# ⚠️ WORK IN PROGRESS — needs upgrading to match the real backup system.
+#    This is a simple "mysqldump everything + tar /var/www" script; the real
+#    production backup setup is in temp-backup/ (backup.sh + backup-config.sh
+#    + backups/ from the main site). Use temp-backup/ as the reference to build
+#    the real new backup system. Until it's upgraded, treat this as a starting
+#    point, not the final backup solution.
+#
+# Scheduled automatically by scripts/install-systemd.sh (server-backup.timer,
+# daily 03:00). Run manually:
+#   sudo bash scripts/backup.sh
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."

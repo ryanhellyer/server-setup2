@@ -27,9 +27,10 @@ That one command:
 5. **Deploys** — creates `.env` and opens it in **nano** for you to fill in
    secrets, builds the nginx + PHP images, brings up the whole stack (nginx,
    php-fpm, mariadb, redis, node), installs systemd units so it starts at boot,
-   and **issues the real TLS cert for `ionos.hellyer.kiwi` automatically** (it
-   checks DNS first — if DNS isn't propagated yet, it tells you exactly what to
-   do and you just re-run `sudo ./setup.sh`).
+   schedules the **nightly backup** and **TLS renewal** (systemd timers, no
+   cron needed), and **issues the real TLS cert for `ionos.hellyer.kiwi`
+   automatically** (it checks DNS first — if DNS isn't propagated yet, it tells
+   you exactly what to do and you just re-run `sudo ./setup.sh`).
 
 No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
 finishes.
@@ -69,8 +70,28 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Everything (menu: deploy, add a site, backup, restore, certs...) | `sudo ./setup.sh` |
 | Deploy / update the stack (no menu) | `sudo bash scripts/deploy.sh` (refreshes files from the tarball, keeps `.env`) |
 | Add a site (no menu) | `sudo bash scripts/new-site.sh <domain> <type>` |
-| Back up | `sudo bash scripts/backup.sh` (cron it) |
+| Back up | `sudo bash scripts/backup.sh` |
 | Restore from backup | `sudo bash scripts/restore.sh` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
+
+## Scheduled jobs (automatic)
+
+No cron is needed — `scripts/deploy.sh` installs systemd timers on every
+install/deploy:
+
+| Job | Schedule | Runs |
+|---|---|---|
+| Nightly backup | daily 03:00 | `scripts/backup.sh` |
+| TLS renewal | 2×/day (renews only when <30 days left) | `scripts/certbot-issue.sh` |
+
+Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer'`.
+
+> **Note:** `scripts/backup.sh` is a **work in progress** — it's a simple
+> "mysqldump everything + tar `/var/www`" script and needs upgrading to match
+> the real production backup system. The current real backup system from the
+> main site lives in [`temp-backup/`](temp-backup/) (`backup.sh`,
+> `backup-config.sh`, `backups/`) — use it as the reference to build the real
+> new backup system. Until then, treat `scripts/backup.sh` as a starting
+> point, not the final backup solution.
