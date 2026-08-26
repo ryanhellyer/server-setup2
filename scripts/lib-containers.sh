@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# =============================================================================
+# lib-containers.sh — SINGLE source of truth for the stack's container names
+# and the host-CLI command -> container map. SOURCE THIS FILE from other
+# scripts; never execute it directly (it defines functions/vars only).
+#
+#   source scripts/lib-containers.sh
+#
+# Keep the names in sync with compose.yaml (the deployment source of truth —
+# services: nginx / php (container_name: php-fpm) / node / mariadb / redis).
+# =============================================================================
+
+# ---- canonical container names (must match compose.yaml) ----
+CONTAINER_NGINX="nginx"
+CONTAINER_PHP_FPM="php-fpm"
+CONTAINER_MARIADB="mariadb"
+CONTAINER_REDIS="redis"
+CONTAINER_NODE="node"
+
+# Ordered container inventory (nginx last: it depends on php-fpm/node sockets).
+ALL_CONTAINERS=(
+  "$CONTAINER_NGINX"
+  "$CONTAINER_PHP_FPM"
+  "$CONTAINER_MARIADB"
+  "$CONTAINER_REDIS"
+  "$CONTAINER_NODE"
+)
+
+# ---- host-CLI command -> container (drives bin/pod-exec + install-cli.sh) ----
+declare -A CLI_CONTAINER=(
+  # php-fpm
+  [php]=php-fpm [composer]=php-fpm [wp]=php-fpm [artisan]=php-fpm
+  [ffmpeg]=php-fpm [ffprobe]=php-fpm [php-reload]=php-fpm
+  [convert]=php-fpm [identify]=php-fpm [compare]=php-fpm [montage]=php-fpm
+  [zip]=php-fpm [unzip]=php-fpm [sqlite3]=php-fpm [gs]=php-fpm [pdftoppm]=php-fpm
+  # mariadb
+  [mariadb]=mariadb [mysql]=mariadb [mysqldump]=mariadb [mariadb-dump]=mariadb
+  # redis
+  [redis-cli]=redis
+  # node
+  [node]=node [npm]=node [npx]=node
+  # nginx
+  [nginx]=nginx [nginx-test]=nginx [nginx-reload]=nginx [nginx-restart]=nginx
+)

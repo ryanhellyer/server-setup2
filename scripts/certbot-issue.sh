@@ -14,6 +14,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 [ -f .env ] && set -a && source .env && set +a
 
 FORCE=0
@@ -79,7 +80,7 @@ grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$' | while read -r line; do
 done
 
 echo "==> Reloading nginx"
-podman exec nginx nginx -s reload || true
+podman exec "$CONTAINER_NGINX" nginx -s reload || true
 
 # If the issued cert name differs from the path nginx references, point the
 # nginx path at it (test server: ionos cert served for every vhost).

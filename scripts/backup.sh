@@ -6,6 +6,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 [ -f .env ] && set -a && source .env && set +a
 
 STAMP="$(date +%Y-%m-%d_%H%M)"
@@ -13,8 +14,8 @@ BACKUP_DIR="/var/databases"
 mkdir -p "$BACKUP_DIR"
 
 echo "==> Dumping all MariaDB databases"
-if podman ps --format '{{.Names}}' | grep -q '^mariadb$'; then
-  podman exec mariadb sh -c 'exec mysqldump --all-databases --single-transaction --quick -uroot -p"$MARIADB_ROOT_PASSWORD"' \
+if podman ps --format '{{.Names}}' | grep -q "^$CONTAINER_MARIADB$"; then
+  podman exec "$CONTAINER_MARIADB" sh -c 'exec mysqldump --all-databases --single-transaction --quick -uroot -p"$MARIADB_ROOT_PASSWORD"' \
     > "$BACKUP_DIR/mysql-all-$STAMP.sql"
   gzip -f "$BACKUP_DIR/mysql-all-$STAMP.sql"
 fi

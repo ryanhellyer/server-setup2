@@ -12,12 +12,13 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 
 command -v systemctl >/dev/null 2>&1 || { echo "systemd not present — skipping."; exit 0; }
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo ./scripts/install-systemd.sh)."; exit 1; }
 
-# Containers compose creates (must match compose.yaml service names).
-CONTAINERS=(nginx php-fpm mariadb redis node)
+# Containers compose creates (defined once in lib-containers.sh).
+CONTAINERS=("${ALL_CONTAINERS[@]}")
 
 SYSTEMD_DIR=/etc/systemd/system
 
@@ -40,12 +41,12 @@ for c in "${CONTAINERS[@]}"; do
 done
 
 # nginx depends on the shared FPM socket: start it after php-fpm/node.
-OVERRIDE="$SYSTEMD_DIR/container-nginx.service.d/order.conf"
+OVERRIDE="$SYSTEMD_DIR/container-$CONTAINER_NGINX.service.d/order.conf"
 mkdir -p "$(dirname "$OVERRIDE")"
-cat > "$OVERRIDE" <<'EOF'
+cat > "$OVERRIDE" <<EOF
 [Unit]
-After=container-php-fpm.service container-node.service
-Wants=container-php-fpm.service container-node.service
+After=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service
+Wants=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service
 EOF
 
 systemctl daemon-reload

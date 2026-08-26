@@ -22,6 +22,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 
 usage() {
   echo "Usage: $0 <domain> <type> [target]"
@@ -149,9 +150,9 @@ fi
 if command -v nginx >/dev/null 2>&1; then
   nginx -t
   nginx -s reload
-elif podman ps --format '{{.Names}}' | grep -q '^nginx$'; then
-  podman exec nginx nginx -t
-  podman exec nginx nginx -s reload
+elif podman ps --format '{{.Names}}' | grep -q "^$CONTAINER_NGINX$"; then
+  podman exec "$CONTAINER_NGINX" nginx -t
+  podman exec "$CONTAINER_NGINX" nginx -s reload
 else
   echo "  !! nginx not running here — run nginx -t and reload on the server."
 fi

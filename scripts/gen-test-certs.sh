@@ -10,6 +10,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 
 CERT_DIR="env/letsencrypt/live/pressabl12.hellyer.kiwi"
 
@@ -55,5 +56,5 @@ openssl req -x509 -nodes -newkey rsa:2048 -days 90 \
 
 chmod 600 "$CERT_DIR/privkey.pem"
 
-podman exec nginx nginx -s reload >/dev/null 2>&1 || true
+podman exec "$CONTAINER_NGINX" nginx -s reload >/dev/null 2>&1 || true
 echo "Temporary self-signed cert written to $CERT_DIR (SANs cover every test domain)."

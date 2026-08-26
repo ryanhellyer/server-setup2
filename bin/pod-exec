@@ -2,19 +2,8 @@
 # =============================================================================
 # pod-exec — run a CLI command inside the right container, transparently from
 # the host shell. This single script serves every command name it is symlinked
-# as (see scripts/install-cli.sh).
-#
-# Installed commands -> container:
-#   php, composer, wp, artisan, ffmpeg, ffprobe  -> php-fpm   (runs as www-data)
-#   convert, identify, compare, montage          -> php-fpm   (ImageMagick 6 CLI)
-#   zip, unzip, sqlite3                          -> php-fpm
-#   gs, pdftoppm                                 -> php-fpm   (Ghostscript / poppler)
-#   php-reload                                   -> php-fpm   (reloads FPM pool; runs as root)
-#   mariadb, mysql, mysqldump, mariadb-dump      -> mariadb   (root creds from .env)
-#   redis-cli                                    -> redis
-#   node, npm, npx                               -> node
-#   nginx, nginx-test, nginx-reload              -> nginx     (nginx -s reload etc.)
-#   nginx-restart                                -> nginx     (host-level podman restart nginx)
+# as (see scripts/install-cli.sh). The command -> container mapping lives in
+# scripts/lib-containers.sh (the single source of truth).
 #
 # Usage from the host (as root):
 #   php -v
@@ -22,6 +11,9 @@
 #   artisan migrate                 # runs `php artisan` in the current dir
 #   wp core version
 #   ffmpeg -i in.mp4 out.avi
+#   convert a.png -resize 800x b.jpg
+#   gs -sDEVICE=pdfwrite -o out.pdf in.ps
+#   pdftoppm -png -r 150 doc.pdf page
 #   mariadb -e 'SHOW DATABASES;'
 #   mysqldump pressabl > /var/databases/pressabl.sql
 #   redis-cli ping
@@ -41,48 +33,36 @@
 set -euo pipefail
 
 NAME="$(basename "$0")"
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+source "$REPO_DIR/scripts/lib-containers.sh"
 
-# ---- command -> container + binary mapping ----
+# ---- command -> container (resolved from lib-containers.sh) ----
 if [ "$NAME" = "pod-exec" ]; then
   CONTAINER="${1:?usage: pod-exec <container> <command> [args...]}"
   shift
   BIN="${1:?usage: pod-exec <container> <command> [args...]}"
   shift
 else
+  CONTAINER="${CLI_CONTAINER[$NAME]:-}"
+  if [ -z "$CONTAINER" ]; then
+    echo "pod-exec: '$NAME' is not a known command." >&2
+    echo "Known: $(printf '%s ' "${!CLI_CONTAINER[@]}" | sort)" >&2
+    exit 127
+  fi
+  BIN="$NAME"
   case "$NAME" in
-    php|composer|wp|artisan|ffmpeg|ffprobe|convert|identify|compare|montage|zip|unzip|sqlite3|gs|pdftoppm)
-      CONTAINER="php-fpm"; BIN="$NAME"
-      [ "$NAME" = "artisan" ] && BIN="php" ;;
-    php-reload)
-      CONTAINER="php-fpm"; BIN="sh"
-      set -- -c 'php-fpm8.5 -t && kill -USR2 1' ;;
-    mariadb|mysql|mysqldump|mariadb-dump)
-      CONTAINER="mariadb"; BIN="$NAME" ;;
-    redis-cli)
-      CONTAINER="redis"; BIN="redis-cli" ;;
-    node|npm|npx)
-      CONTAINER="node"; BIN="$NAME" ;;
-    nginx)
-      CONTAINER="nginx"; BIN="nginx" ;;
-    nginx-test)
-      CONTAINER="nginx"; BIN="nginx"; set -- -t ;;
-    nginx-reload)
-      CONTAINER="nginx"; BIN="sh"
-      set -- -c 'nginx -t && nginx -s reload' ;;
-    nginx-restart)
-      CONTAINER="nginx" ;;
-    *)
-      echo "pod-exec: '$NAME' is not a known command." >&2
-      echo "Known: php composer wp artisan ffmpeg ffprobe php-reload convert identify compare montage zip unzip sqlite3 gs pdftoppm | mysql mariadb mysqldump mariadb-dump | redis-cli | node npm npx | nginx nginx-test nginx-reload nginx-restart" >&2
-      exit 127 ;;
+    artisan)       BIN="php" ;;
+    php-reload)    BIN="sh"; set -- -c 'php-fpm8.5 -t && kill -USR2 1' ;;
+    nginx-reload)  BIN="sh"; set -- -c 'nginx -t && nginx -s reload' ;;
+    nginx-test)    BIN="nginx"; set -- -t ;;
   esac
 fi
 
 # ---- `nginx-restart` is a host-level container restart, not an in-container
 # ---- exec. Run it before the podman exec below.
 if [ "$NAME" = "nginx-restart" ]; then
-  exec podman restart nginx
+  exec podman restart "$CONTAINER_NGINX"
 fi
 
 # ---- mirror the host cwd into the container when under /var/www ----
@@ -100,12 +80,12 @@ fi
 
 # ---- PHP tooling runs as www-data so file ownership stays consistent ----
 # (php-reload must run as root — it signals the FPM master, PID 1.)
-if [ "$CONTAINER" = "php-fpm" ] && [ "$NAME" != "php-reload" ]; then
+if [ "$CONTAINER" = "$CONTAINER_PHP_FPM" ] && [ "$NAME" != "php-reload" ]; then
   EXEC_OPTS+=(-u www-data)
 fi
 
 # ---- DB credentials pulled from the repo .env when present ----
-if [ "$CONTAINER" = "mariadb" ]; then
+if [ "$CONTAINER" = "$CONTAINER_MARIADB" ]; then
   [ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a
   case "$NAME" in
     mariadb|mysql)

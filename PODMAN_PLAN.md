@@ -100,6 +100,7 @@ server-setup/
 |   |-- certbot-issue.sh          # issue/renew certs (env-driven cert list)
 |   |-- install-cli.sh            # symlink host CLI wrappers into ~/.local/bin
 |   |-- install-systemd.sh        # systemd units so the stack starts at boot
+|   |-- lib-containers.sh         # SINGLE source of truth: container names + CLI map
 |   `-- test-site.sh              # scaffold the ionos.hellyer.kiwi test page
 |-- bin/
 |   `-- pod-exec                  # run php/composer/mariadb/ffmpeg/... in the right container

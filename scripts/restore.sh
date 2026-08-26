@@ -10,6 +10,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 [ -f .env ] && set -a && source .env && set +a
 
 BACKUP_DIR="${BACKUP_DIR:-/var/databases}"
@@ -21,11 +22,11 @@ WWW_ARCHIVE="$(ls -1t "$BACKUP_DIR"/www-*.tar.gz 2>/dev/null | head -1 || true)"
   exit 0
 }
 
-podman ps --format '{{.Names}}' | grep -q '^mariadb$' || { echo "mariadb container not running — start the stack first."; exit 1; }
+podman ps --format '{{.Names}}' | grep -q "^$CONTAINER_MARIADB$" || { echo "$CONTAINER_MARIADB container not running — start the stack first."; exit 1; }
 
 if [ -n "$DB_DUMP" ]; then
   echo "==> Restoring databases from: $DB_DUMP"
-  gunzip -c "$DB_DUMP" | podman exec -i mariadb sh -c 'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD"'
+  gunzip -c "$DB_DUMP" | podman exec -i "$CONTAINER_MARIADB" sh -c 'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD"'
 fi
 
 if [ -n "$WWW_ARCHIVE" ]; then

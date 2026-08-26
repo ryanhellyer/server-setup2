@@ -2,7 +2,8 @@
 # =============================================================================
 # install-cli.sh — install host-side command wrappers that run inside the
 # right container (via bin/pod-exec). Creates symlinks in ~/.local/bin
-# (or the directory given as the first argument).
+# (or the directory given as the first argument). The command list comes from
+# scripts/lib-containers.sh (single source of truth).
 #
 #   ./scripts/install-cli.sh
 #   export PATH="$HOME/.local/bin:$PATH"     # add to ~/.bashrc
@@ -14,23 +15,10 @@ DEST_DIR="${1:-$HOME/.local/bin}"
 
 mkdir -p "$DEST_DIR"
 
-COMMANDS=(
-  # PHP container
-  php composer wp artisan ffmpeg ffprobe php-reload
-  convert identify compare montage
-  zip unzip sqlite3 gs pdftoppm
-  # MariaDB container
-  mariadb mysql mysqldump mariadb-dump
-  # Redis container
-  redis-cli
-  # Node container
-  node npm npx
-  # Nginx container
-  nginx nginx-test nginx-reload nginx-restart
-)
+source "$REPO_DIR/scripts/lib-containers.sh"
 
-for c in "${COMMANDS[@]}"; do
-  ln -sf "$REPO_DIR/bin/pod-exec" "$DEST_DIR/$c"
+for cmd in "${!CLI_CONTAINER[@]}"; do
+  ln -sf "$REPO_DIR/bin/pod-exec" "$DEST_DIR/$cmd"
 done
 
 echo "Installed wrappers to: $DEST_DIR"

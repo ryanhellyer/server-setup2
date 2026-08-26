@@ -8,6 +8,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-containers.sh
 
 SRC="sites/ionos.hellyer.kiwi"
 DEST="/var/www/ionos.hellyer.kiwi/public"
@@ -19,7 +20,7 @@ mkdir -p "$DEST"
 cp -r "$SRC/." "$DEST/"
 
 echo "==> Reloading nginx"
-podman exec nginx nginx -s reload || true
+podman exec "$CONTAINER_NGINX" nginx -s reload || true
 
 echo
 echo "Test site ready. Point DNS ionos.hellyer.kiwi at this host, then visit:"
