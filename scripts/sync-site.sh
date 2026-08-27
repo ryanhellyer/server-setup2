@@ -14,11 +14,12 @@
 #   HETZNER_SYNC_SRC    remote snapshot dir (empty = disabled)
 #   HETZNER_SYNC_DEST   local destination
 #
-# One-time manual step: the PUBLIC key must be authorized on the box
-# (Hetzner Robot -> Storage Box -> SSH keys, or place it in the box's
-# ~/.ssh/authorized_keys via sftp). When run interactively (from a deploy)
-# this stops and waits for you to do that, then retries on Enter, or lets you
-# skip with 's'. Non-interactive runs just fail with the instructions.
+# One-time step: the PUBLIC key must be authorized on the box once. Hetzner
+# storage boxes install a key with:
+#     cat <key>.pub | ssh -p <port> <user>@<host> install-ssh-key
+# (it asks for the storage box password). When run interactively (from a
+# deploy) this offers to run that for you, then retries the import; 's' skips
+# it. Non-interactive runs just fail with the instructions.
 #
 #   sudo ./scripts/sync-site.sh     (also called automatically by deploy.sh)
 # =============================================================================
@@ -61,43 +62,55 @@ mkdir -p "$DEST"
 if ! run_sync; then
   echo
   echo "!! The Hetzner box rejected the connection — the SSH key is not"
-  echo "   authorized on it yet (one-time, manual):"
+  echo "   authorized on it yet (one-time step):"
   echo
-  echo "   1. Paste this PUBLIC key into the box:"
-  echo "        Hetzner Robot -> Storage Box -> $USER -> SSH keys"
-  echo "        $(cat "$KEY.pub" 2>/dev/null || echo "(key not readable)")"
-  echo "      (or one-time: sftp -P $PORT $USER@$HOST and place the .pub"
-  echo "       in ~/.ssh/authorized_keys)"
+  echo "   Public key:"
+  echo "     $(cat "$KEY.pub" 2>/dev/null || echo "(key not readable)")"
   echo
+  echo "   Install it on the box with (asks for the storage box password):"
+  echo "     cat $KEY.pub | ssh -p $PORT $USER@$HOST install-ssh-key"
+  echo
+
+  install_key() {
+    echo "==> Installing the key on $HOST (enter the storage box password when asked)..."
+    cat "$KEY.pub" | ssh -p "$PORT" -o StrictHostKeyChecking=accept-new \
+      "$USER@$HOST" install-ssh-key
+  }
 
   if [ -t 0 ]; then
     attempts=0
     while [ "$attempts" -lt 5 ]; do
-      read -r -p "Press Enter once the key is added to the Hetzner box to retry, or 's' to skip the import: " answer
-      case "$answer" in
-        s|S|skip)
+      read -r -p "Authorize the key on the box now? [Y/n] (s = skip the import): " answer
+      case "${answer,,}" in
+        s|skip)
           echo "Skipping site import. (Run 'sudo bash scripts/sync-site.sh' later to re-sync.)"
           exit 0
           ;;
-        "")
-          if run_sync; then
-            "$PWD/scripts/fix-perms.sh" "$DEST"
-            echo "Imported."
-            exit 0
-          fi
-          echo "!! Still rejected — the key hasn't been added yet?"
-          attempts=$((attempts + 1))
+        n|no)
+          echo "   OK — skipping the key install; retrying the import anyway."
           ;;
         *)
-          echo "   ('s' = skip, or just press Enter to retry)"
+          if install_key; then
+            echo "==> Key installed — retrying the import."
+          else
+            echo "!! install-ssh-key failed (wrong password? box unreachable?). Retrying anyway."
+          fi
           ;;
       esac
+      if run_sync; then
+        "$PWD/scripts/fix-perms.sh" "$DEST"
+        echo "Imported."
+        exit 0
+      fi
+      echo "!! Still rejected — the key still isn't authorized on the box."
+      attempts=$((attempts + 1))
     done
     echo "Giving up after $attempts attempts — continuing without the import."
     exit 1
   else
-    echo "   (not interactive — authorize the key, then re-run:"
+    echo "   (not interactive — install the key, then re-run:"
     echo "    sudo bash scripts/sync-site.sh)"
+    echo "    e.g.  cat $KEY.pub | ssh -p $PORT $USER@$HOST install-ssh-key"
     exit 1
   fi
 fi

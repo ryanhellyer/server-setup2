@@ -73,10 +73,10 @@ if id ryan >/dev/null 2>&1; then
 fi
 
 # ---- SSH key for the Hetzner storage box (site imports / backups) ----
-# The PUBLIC key must be added to the box once, by hand:
-#   Hetzner Robot -> Storage Box -> select the box -> SSH keys -> paste it.
-# (Or one-time: sftp -P 23 u<id>@u<id>.your-storagebox.de and place the .pub
-# in ~/.ssh/authorized_keys.) Until then, scripts/sync-site.sh can't connect.
+# The PUBLIC key must be added to the box once. Hetzner storage boxes install
+# a key with:  cat <key>.pub | ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key
+# (it asks for the storage box password). scripts/sync-site.sh offers to run
+# that for you when the key isn't authorized yet.
 if id ryan >/dev/null 2>&1; then
   HETZNER_SSH_DIR="/home/ryan/.ssh"
   HETZNER_KEY_OWNER="ryan:ryan"
@@ -91,13 +91,15 @@ if [ ! -f "$HETZNER_SSH_DIR/hetzner_backup" ]; then
   chown "$HETZNER_KEY_OWNER" "$HETZNER_SSH_DIR/hetzner_backup" "$HETZNER_SSH_DIR/hetzner_backup.pub"
   echo
   echo "  ****************************************************************"
-  echo "  * ONE-TIME MANUAL STEP: authorize this key on the Hetzner box. *"
+  echo "  * ONE-TIME STEP: install this key on the Hetzner box.         *"
   echo "  *                                                            *"
   cat "$HETZNER_SSH_DIR/hetzner_backup.pub"
   echo "  *                                                            *"
-  echo "  * Hetzner Robot -> Storage Box -> SSH keys -> paste the key. *"
-  echo "  * (or: sftp -P 23 u<id>@u<id>.your-storagebox.de and place   *"
-  echo "  *       the .pub into ~/.ssh/authorized_keys)                *"
+  echo "  *   cat $HETZNER_SSH_DIR/hetzner_backup.pub | \\"
+  echo "  *     ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key *"
+  echo "  *                                                            *"
+  echo "  * (asks for the storage box password; the next deploy syncs   *"
+  echo "  *  automatically — or re-run scripts/sync-site.sh)            *"
   echo "  ****************************************************************"
   echo
 fi

@@ -71,11 +71,31 @@ if [ -f .tarball ]; then
   TARBALL_URL="$(cat .tarball)"
   LAST_SHA="$(cat .last-sha 2>/dev/null || true)"
   echo "  (tarball install — checking for updates)"
+
   # Resolve the live branch SHA first: SHA tarballs are immutable, so a
   # CDN-cached stale branch tarball is never used. If it matches what's
   # already applied, skip the download.
+  owner=""; repo=""; branch=""
   if [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/refs/heads/([^/]+)\.tar\.gz$ ]]; then
     owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"; branch="${BASH_REMATCH[3]}"
+  elif [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/ ]]; then
+    # Old installs wrote the resolved SHA URL to .tarball (see setup.sh), which
+    # the refs/heads regex can't parse — so every deploy re-downloaded the same
+    # pinned SHA forever. Self-heal: ask the API for the repo's default branch
+    # and rewrite .tarball to the branch form.
+    owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"
+    branch="$(curl -fsSL "https://api.github.com/repos/$owner/$repo" 2>/dev/null \
+      | sed -n 's/.*"default_branch": *"\([^"]*\)".*/\1/p' | head -1)"
+    if [ -n "$branch" ]; then
+      echo "  (repaired stale SHA-pinned .tarball -> refs/heads/$branch)"
+      printf '%s\n' "https://github.com/$owner/$repo/archive/refs/heads/$branch.tar.gz" > .tarball
+      TARBALL_URL="https://github.com/$owner/$repo/archive/refs/heads/$branch.tar.gz"
+    else
+      echo "  !! can't resolve the default branch for $owner/$repo — keeping .tarball as-is"
+    fi
+  fi
+
+  if [ -n "$branch" ]; then
     sha="$(curl -fsSL "https://api.github.com/repos/$owner/$repo/commits/$branch" 2>/dev/null \
       | sed -n 's/.*"sha": "\([a-f0-9]\{40\}\)".*/\1/p' | head -1)"
     if [ -n "$sha" ]; then

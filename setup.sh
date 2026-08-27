@@ -130,7 +130,10 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   rm -f /tmp/server-setup.tar.gz
 
   # Remember how we were installed so deploy.sh can refresh the same way.
-  printf '%s\n' "$TARBALL_URL" > "$REPO_DIR/.tarball"
+  # Store the refs/heads BRANCH URL (not the SHA-pinned URL we downloaded):
+  # deploy.sh parses it to re-resolve the live SHA on every deploy. .last-sha
+  # records what's actually applied so it can skip when nothing changed.
+  printf '%s\n' "https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz" > "$REPO_DIR/.tarball"
   chmod 600 "$REPO_DIR/.tarball"
   [ -n "$sha" ] && printf '%s\n' "$sha" > "$REPO_DIR/.last-sha"
 

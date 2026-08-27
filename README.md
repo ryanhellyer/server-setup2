@@ -105,15 +105,18 @@ sites resolve instead of showing the seeded placeholder. Configure it in `.env`
 (`HETZNER_SYNC_*`), then `scripts/sync-site.sh` (called automatically by every
 `deploy.sh`) rsyncs the snapshot in and keeps it in sync.
 
-**One-time manual step — authorize the SSH key on the box:**
+**One-time step — authorize the SSH key on the box:**
 
 1. `sudo bash scripts/host-setup.sh` generates `~/.ssh/hetzner_backup` (if
    missing) and prints the **public** key with instructions.
-2. Add that `.pub` to the box — **Hetzner Robot → Storage Box → select the box
-   → SSH keys → paste it** (or one-time
-   `sftp -P 23 u<id>@u<id>.your-storagebox.de` and place it in the box's
-   `~/.ssh/authorized_keys`).
-3. Re-run `sudo bash scripts/sync-site.sh`.
+2. Install it on the box with Hetzner's built-in command (it asks for the
+   storage box password):
+   ```bash
+   cat ~/.ssh/hetzner_backup.pub | ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key
+   ```
+3. Re-run `sudo bash scripts/sync-site.sh` — or let the next deploy do it.
+   (`sync-site.sh` can also offer to run step 2 for you when it hits an
+   unauthorized key, and retries after.)
 
 > The snapshot is **files only**. Making a site actually run also needs its
 > database imported into the MariaDB container and `.env` pointed at it.
