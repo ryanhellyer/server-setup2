@@ -95,6 +95,17 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
       passwd ryan
     fi
     ok "User 'ryan' has sudo privileges."
+
+    # ---- SSH key for passwordless login ----
+    say "Installing SSH public key for 'ryan'."
+    install -d -o ryan -g "$(id -gn ryan)" -m 700 /home/ryan/.ssh
+    touch /home/ryan/.ssh/authorized_keys
+    chmod 600 /home/ryan/.ssh/authorized_keys
+    chown ryan:"$(id -gn ryan)" /home/ryan/.ssh/authorized_keys
+    grep -qs 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX' \
+      /home/ryan/.ssh/authorized_keys \
+      || echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX ryanhellyer@gmail.com' >> /home/ryan/.ssh/authorized_keys
+    ok "SSH key installed for passwordless login."
   fi
 
   # ---- download the files (no git, no keys) ----
