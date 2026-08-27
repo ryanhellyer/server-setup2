@@ -4,6 +4,8 @@ types {
     text/html                                        html htm shtml;
     text/css                                         css;
     text/xml                                         xml;
+    text/csv                                         csv;
+    text/vtt                                         vtt;
     image/gif                                        gif;
     image/jpeg                                       jpeg jpg;
     application/javascript                           js;
@@ -28,9 +30,13 @@ types {
 
     font/woff                                        woff;
     font/woff2                                       woff2;
+    font/collection                                  ttc;
+    font/otf                                         otf;
+    font/ttf                                         ttf;
 
     application/java-archive                         jar war ear;
     application/json                                 json;
+    application/manifest+json                         webmanifest;
     application/mac-binhex40                         hqx;
     application/msword                               doc;
     application/pdf                                  pdf;
@@ -55,7 +61,9 @@ types {
     application/vnd.wap.wmlc                         wmlc;
     application/wasm                                 wasm;
     application/x-7z-compressed                      7z;
+    application/x-bzip2                              bz2;
     application/x-cocoa                              cco;
+    application/x-gzip                               gz;
     application/x-java-archive-diff                  jardiff;
     application/x-java-jnlp-file                     jnlp;
     application/x-makeself                           run;
@@ -66,9 +74,11 @@ types {
     application/x-sea                                sea;
     application/x-shockwave-flash                    swf;
     application/x-stuffit                            sit;
+    application/x-tar                                tar;
     application/x-tcl                                tcl tk;
     application/x-x509-ca-cert                       der pem crt;
     application/x-xpinstall                          xpi;
+    application/x-xz                                 xz;
     application/xhtml+xml                            xhtml;
     application/xspf+xml                             xspf;
     application/zip                                  zip;
@@ -80,13 +90,18 @@ types {
     application/octet-stream                         msi msp msm;
 
     audio/midi                                       mid midi kar;
+    audio/aac                                        aac;
+    audio/flac                                       flac;
     audio/mpeg                                       mp3;
     audio/ogg                                        ogg;
+    audio/webm                                       weba;
     audio/x-m4a                                      m4a;
+    audio/x-wav                                      wav;
     audio/x-realaudio                                ra;
 
     video/3gpp                                       3gpp 3gp;
     video/mp2t                                       ts;
+    video/iso.segment                                 m4s;
     video/mp4                                        mp4;
     video/mpeg                                       mpeg mpg;
     video/ogg                                        ogv;

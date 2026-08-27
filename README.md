@@ -63,6 +63,12 @@ cp .env.example .env && nano .env      # scripts/deploy.sh does this for you aut
 sudo ./setup.sh                        # menu: pick "Full install / deploy / update"
 ```
 
+> **Config templates:** `nginx/nginx.conf`, `php/fpm-www.conf` and `maria/my.cnf`
+> are generated from their `.template` files by `scripts/render-config.sh` on
+> every deploy (values from `.env`). They're not committed — edit the `.template`
+> files instead. A fresh `podman compose up` without a prior deploy won't find
+> them, so always go through `scripts/deploy.sh` first.
+
 ## Day-to-day
 
 | Thing | Command |
