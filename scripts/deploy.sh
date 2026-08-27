@@ -177,6 +177,13 @@ echo "==> bring the stack up (build + start)"
 echo "==> apply web-dir permissions (ryan:www-data)"
 "$PWD/scripts/fix-perms.sh" /var/www
 
+# ---- 9c. import site snapshot(s) from the Hetzner storage box ----
+# .env-gated (HETZNER_SYNC_SRC empty = skipped). A failure here (e.g. the key
+# isn't authorized on the box yet) must NOT abort the deploy — print the
+# message and keep going, like the certbot step below.
+"$PWD/scripts/sync-site.sh" \
+  || echo "==> (site import failed — see above; authorize the key, then re-run: sudo bash scripts/sync-site.sh)"
+
 # ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"

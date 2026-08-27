@@ -81,6 +81,7 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Restore from backup | `sudo bash scripts/restore.sh` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
+| Import/re-sync a site from the Hetzner storage box | `sudo bash scripts/sync-site.sh` (auto-run by `deploy.sh`) |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
@@ -96,6 +97,26 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 * PHP-FPM creates files with `umask = 0002` (`php/fpm-www.conf`).
 * `sudo bash scripts/fix-perms.sh` re-applies ownership/modes (idempotent, run
   automatically by `deploy.sh` and `new-site.sh`; re-run after `restore.sh`).
+
+## Site import from the Hetzner storage box
+
+On a fresh box, real site content is pulled from the Hetzner storage box so the
+sites resolve instead of showing the seeded placeholder. Configure it in `.env`
+(`HETZNER_SYNC_*`), then `scripts/sync-site.sh` (called automatically by every
+`deploy.sh`) rsyncs the snapshot in and keeps it in sync.
+
+**One-time manual step — authorize the SSH key on the box:**
+
+1. `sudo bash scripts/host-setup.sh` generates `~/.ssh/hetzner_backup` (if
+   missing) and prints the **public** key with instructions.
+2. Add that `.pub` to the box — **Hetzner Robot → Storage Box → select the box
+   → SSH keys → paste it** (or one-time
+   `sftp -P 23 u<id>@u<id>.your-storagebox.de` and place it in the box's
+   `~/.ssh/authorized_keys`).
+3. Re-run `sudo bash scripts/sync-site.sh`.
+
+> The snapshot is **files only**. Making a site actually run also needs its
+> database imported into the MariaDB container and `.env` pointed at it.
 
 ## Scheduled jobs (automatic)
 

@@ -72,4 +72,34 @@ if id ryan >/dev/null 2>&1; then
   fi
 fi
 
+# ---- SSH key for the Hetzner storage box (site imports / backups) ----
+# The PUBLIC key must be added to the box once, by hand:
+#   Hetzner Robot -> Storage Box -> select the box -> SSH keys -> paste it.
+# (Or one-time: sftp -P 23 u<id>@u<id>.your-storagebox.de and place the .pub
+# in ~/.ssh/authorized_keys.) Until then, scripts/sync-site.sh can't connect.
+if id ryan >/dev/null 2>&1; then
+  HETZNER_SSH_DIR="/home/ryan/.ssh"
+  HETZNER_KEY_OWNER="ryan:ryan"
+else
+  HETZNER_SSH_DIR="/root/.ssh"
+  HETZNER_KEY_OWNER="root:root"
+fi
+install -d -m 700 -o "$(echo "$HETZNER_KEY_OWNER" | cut -d: -f1)" -g "$(echo "$HETZNER_KEY_OWNER" | cut -d: -f2)" "$HETZNER_SSH_DIR"
+if [ ! -f "$HETZNER_SSH_DIR/hetzner_backup" ]; then
+  echo "==> generating SSH key for the Hetzner storage box"
+  ssh-keygen -q -t ed25519 -N "" -C "server-setup@$(hostname)" -f "$HETZNER_SSH_DIR/hetzner_backup"
+  chown "$HETZNER_KEY_OWNER" "$HETZNER_SSH_DIR/hetzner_backup" "$HETZNER_SSH_DIR/hetzner_backup.pub"
+  echo
+  echo "  ****************************************************************"
+  echo "  * ONE-TIME MANUAL STEP: authorize this key on the Hetzner box. *"
+  echo "  *                                                            *"
+  cat "$HETZNER_SSH_DIR/hetzner_backup.pub"
+  echo "  *                                                            *"
+  echo "  * Hetzner Robot -> Storage Box -> SSH keys -> paste the key. *"
+  echo "  * (or: sftp -P 23 u<id>@u<id>.your-storagebox.de and place   *"
+  echo "  *       the .pub into ~/.ssh/authorized_keys)                *"
+  echo "  ****************************************************************"
+  echo
+fi
+
 echo "Host packages installed."

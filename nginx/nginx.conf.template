@@ -82,6 +82,7 @@ http {
 	map $http_host $platform_type {
 		ryan.hellyer.kiwi      "laravel";
 		spam-destroyer.com     "laravel";
+		spam-destroyer.hellyer.kiwi "laravel";
 		default                "wordpress";
 	}
 
