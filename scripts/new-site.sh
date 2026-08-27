@@ -130,6 +130,7 @@ esac
 if [ -n "$ROOT" ]; then
   mkdir -p "$ROOT" "/var/www/$DOMAIN/logs"
   echo "  -> created $ROOT and /var/www/$DOMAIN/logs"
+  "$PWD/scripts/fix-perms.sh" "/var/www/$DOMAIN"
 fi
 
 # ---- 3. Database for laravel / wordpress ----

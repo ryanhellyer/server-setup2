@@ -80,9 +80,22 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Back up | `sudo bash scripts/backup.sh` |
 | Restore from backup | `sudo bash scripts/restore.sh` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
+| Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
+
+## Web directory permissions
+
+`/var/www` uses a shared-hosting model so files stay editable both by `ryan`
+(SSH) and by the containers (`www-data` — same uid/gid 33 on host and images):
+
+* owner `ryan`, group `www-data`; dirs `2775` (setgid), files `664`.
+* `ryan` is added to the `www-data` group and gets `umask 002` in `.bashrc`
+  (`scripts/host-setup.sh`).
+* PHP-FPM creates files with `umask = 0002` (`php/fpm-www.conf`).
+* `sudo bash scripts/fix-perms.sh` re-applies ownership/modes (idempotent, run
+  automatically by `deploy.sh` and `new-site.sh`; re-run after `restore.sh`).
 
 ## Scheduled jobs (automatic)
 

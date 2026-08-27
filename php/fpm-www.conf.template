@@ -5,6 +5,11 @@
 [www]
 user = www-data
 group = www-data
+
+; Group-write umask so files PHP creates (uploads, cache, ...) land as 664/775
+; and stay editable by the www-data group on the host (see scripts/fix-perms.sh).
+umask = 0002
+
 listen = /run/php/php8.5-fpm.sock
 listen.owner = www-data
 listen.group = www-data

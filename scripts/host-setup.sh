@@ -34,6 +34,11 @@ apt-get install -y \
 echo "==> creating bind-mount directories"
 mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
 
+echo "==> adding admin user to www-data group (shared web-write model)"
+if id ryan >/dev/null 2>&1; then
+  usermod -aG www-data ryan
+fi
+
 # Small boxes: ensure swap so memory pressure doesn't OOM/thrash.
 bash scripts/ensure-swap.sh
 
@@ -57,5 +62,14 @@ for user in root ryan; do
   grep -qs 'starship init bash' "$home/.bashrc" \
     || echo 'eval "$(starship init bash)"' >> "$home/.bashrc"
 done
+
+# Group-write umask so files ryan creates in the web dirs stay editable by the
+# www-data containers (matches the fpm `umask = 0002`).
+if id ryan >/dev/null 2>&1; then
+  home="$(getent passwd ryan | cut -d: -f6)" || true
+  if [ -n "$home" ] && [ -d "$home" ]; then
+    grep -qs '^umask 002' "$home/.bashrc" || echo 'umask 002' >> "$home/.bashrc"
+  fi
+fi
 
 echo "Host packages installed."

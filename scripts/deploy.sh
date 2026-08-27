@@ -172,6 +172,11 @@ podman run --rm \
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
+# ---- 9b. web-dir ownership + permissions (ryan:www-data, setgid) ----
+# Idempotent; also catches a server that predates this step.
+echo "==> apply web-dir permissions (ryan:www-data)"
+"$PWD/scripts/fix-perms.sh" /var/www
+
 # ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"
