@@ -179,6 +179,25 @@ if [ "$DEPLOY_ENV" = "test" ]; then
   "$PWD/scripts/gen-test-certs.sh"
 fi
 
+# ---- 7b. placeholder certs for mapped real-cert domains ----
+# nginx selects a per-SNI cert from the $site_cert map (variable-based
+# ssl_certificate loads lazily: if a mapped file is missing, that domain's
+# handshake fails with ERR_SSL_PROTOCOL_ERROR). Seed a copy of the self-signed
+# test-all cert into every mapped live/<name> dir so each domain degrades to
+# the bypassable fallback until certbot issues the real cert and reloads.
+TEST_ALL_DIR="env/letsencrypt/live/test-all"
+MAPPED_CERT_DOMAINS="$(sed -n '/map \$ssl_server_name \$site_cert {/,/}/p' nginx/nginx.conf.template \
+  | awk '!/default/ && /fullchain\.pem/ {print $1}')"
+for d in $MAPPED_CERT_DOMAINS; do
+  dir="env/letsencrypt/live/$d"
+  if [ ! -f "$dir/fullchain.pem" ]; then
+    echo "  seeding placeholder cert for $d (self-signed until certbot issues the real one)"
+    mkdir -p "$dir"
+    cp "$TEST_ALL_DIR/fullchain.pem" "$dir/fullchain.pem"
+    cp "$TEST_ALL_DIR/privkey.pem" "$dir/privkey.pem"
+  fi
+done
+
 # ---- 8. build + test nginx config ----
 echo "==> build nginx image (used for config validation)"
 IMAGE_ID="$(podman build -q ./nginx)"
