@@ -1,4 +1,6 @@
-# TEST cert list — the ONLY domain that gets a real Let's Encrypt cert on the
-# test server. Replace this with the production list (certbot/domains.txt) by
-# setting CERTBOT_DOMAINS_FILE in .env, or on production just leave .env empty.
+# TEST cert list — the domains that get a real Let's Encrypt cert on the test
+# server (each needs DNS pointed at this host first). Replace with the
+# production list (certbot/domains.txt) by setting CERTBOT_DOMAINS_FILE in
+# .env, or on production just leave .env empty.
 ionos.hellyer.kiwi ionos.hellyer.kiwi
+spam-destroyer.hellyer.kiwi spam-destroyer.hellyer.kiwi

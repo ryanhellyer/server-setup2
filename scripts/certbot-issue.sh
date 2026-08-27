@@ -8,9 +8,9 @@
 # Usage:  sudo ./scripts/certbot-issue.sh [--force]
 #   --force  force reissue even if a valid cert exists (rate-limit aware).
 #
-# nginx serves every vhost from /etc/letsencrypt/live/pressabl12.hellyer.kiwi/.
-# If the cert actually issued here has a different name (e.g. ionos on the test
-# server), that path is symlinked to it so nginx serves the real cert.
+# nginx selects each domain's certificate via the $site_cert / $site_cert_key
+# maps in nginx.conf.template (default = the self-signed live/test-all
+# fallback). This script only issues certs into their own live/<name>/ dirs.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -24,7 +24,6 @@ WEBROOT="/var/www/acme"
 LETSENCRYPT_DIR="$PWD/env/letsencrypt"
 DOMAINS_FILE="${CERTBOT_DOMAINS_FILE:-certbot/domains.txt}"
 EMAIL="${CERTBOT_EMAIL:-admin@hellyer.kiwi}"
-NGINX_CERT_NAME="pressabl12.hellyer.kiwi"
 
 [ -f "$DOMAINS_FILE" ] || { echo "Missing $DOMAINS_FILE"; exit 1; }
 mkdir -p "$WEBROOT" "$LETSENCRYPT_DIR"
@@ -89,14 +88,5 @@ done < <(grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$')
 
 echo "==> Reloading nginx"
 podman exec "$CONTAINER_NGINX" nginx -s reload || true
-
-# If the issued cert name differs from the path nginx references, point the
-# nginx path at it (test server: ionos cert served for every vhost).
-FIRST_CERT="$(grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$' | head -1 | awk '{print $1}' || true)"
-if [ -n "$FIRST_CERT" ] && [ "$FIRST_CERT" != "$NGINX_CERT_NAME" ] && [ -d "$LETSENCRYPT_DIR/live/$FIRST_CERT" ]; then
-  rm -rf "$LETSENCRYPT_DIR/live/$NGINX_CERT_NAME"
-  ln -s "$FIRST_CERT" "$LETSENCRYPT_DIR/live/$NGINX_CERT_NAME"
-  echo "Linked $NGINX_CERT_NAME -> $FIRST_CERT (nginx serves the real cert)."
-fi
 
 echo "Certificates up to date."

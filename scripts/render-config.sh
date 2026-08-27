@@ -3,6 +3,8 @@
 # render-config.sh — render configs from templates using .env values.
 #
 #   nginx/nginx.conf        FASTCGI_CACHE_SIZE            (test 64m / prod 500m)
+#   nginx/snippets/security-headers.conf
+#                           DEPLOY_ENV                    (HSTS: prod only)
 #   maria/my.cnf            MARIADB_BUFFER_POOL, MARIADB_LOG_SIZE (test 256m / prod 1G)
 #   php/fpm-www.conf        PHP_FPM_MAX_CHILDREN, START_SERVERS, MIN_SPARE,
 #                           MAX_SPARE, MEMORY_LIMIT       (test 20 / prod 50)
@@ -29,6 +31,19 @@ LG="$(suffix_m "${MARIADB_LOG_SIZE:-64m}")"
 sed -e "s/__MARIADB_BUFFER_POOL__/$BP/" -e "s/__MARIADB_LOG_SIZE__/$LG/" \
     maria/my.cnf.template > maria/my.cnf
 echo "Rendered maria/my.cnf (buffer pool: $BP, log: $LG)."
+
+# ---- nginx/snippets/security-headers.conf (HSTS: production only) ----
+# In test mode the self-signed fallback certs are used, and a
+# Strict-Transport-Security header (includeSubdomains) would make browsers
+# hard-refuse them instead of letting you proceed. Production keeps full HSTS.
+if [ "${DEPLOY_ENV:-test}" = "test" ]; then
+  HSTS=""
+else
+  HSTS='add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload" always;'
+fi
+awk -v hsts="$HSTS" '{ gsub(/__HSTS__/, hsts); print }' \
+  nginx/snippets/security-headers.conf.template > nginx/snippets/security-headers.conf
+echo "Rendered nginx/snippets/security-headers.conf (HSTS: $([ "${DEPLOY_ENV:-test}" = "test" ] && echo off || echo on))."
 
 # ---- php/fpm-www.conf ----
 CH="${PHP_FPM_MAX_CHILDREN:-20}"

@@ -12,12 +12,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
 
-CERT_DIR="env/letsencrypt/live/pressabl12.hellyer.kiwi"
+CERT_DIR="env/letsencrypt/live/test-all"
 
-# If a real (certbot-issued) cert is already in place — either linked here
-# (pressabl12 -> ionos...) or a real dir with a chain.pem — never clobber it
-# with a temporary self-signed cert. certbot-issued certs always ship chain.pem;
-# the temporary self-signed cert does not.
+# Never clobber a real (certbot-issued) cert. certbot-issued certs always ship
+# chain.pem; the temporary self-signed cert does not. (test-all is only ever
+# the self-signed fallback — real certs live in their own live/<name>/ dirs.)
 if [ -L "$CERT_DIR" ] || [ -f "$CERT_DIR/chain.pem" ]; then
   echo "Real (certbot) certificate already in place — skipping temporary self-signed cert."
   exit 0

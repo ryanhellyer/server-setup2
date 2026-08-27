@@ -86,6 +86,22 @@ http {
 		default                "wordpress";
 	}
 
+	# Per-domain TLS certificates. Every server block serves whichever cert
+	# matches the SNI name ($ssl_server_name); `default` is the self-signed
+	# multi-SAN fallback (scripts/gen-test-certs.sh / deploy.sh bootstrap), so
+	# any domain not yet issued a real cert still gets a name-matching one.
+	# Production: add each real domain here -> its own live/<name> cert dir.
+	map $ssl_server_name $site_cert {
+		default                       /etc/letsencrypt/live/test-all/fullchain.pem;
+		ionos.hellyer.kiwi            /etc/letsencrypt/live/ionos.hellyer.kiwi/fullchain.pem;
+		spam-destroyer.hellyer.kiwi   /etc/letsencrypt/live/spam-destroyer.hellyer.kiwi/fullchain.pem;
+	}
+	map $ssl_server_name $site_cert_key {
+		default                       /etc/letsencrypt/live/test-all/privkey.pem;
+		ionos.hellyer.kiwi            /etc/letsencrypt/live/ionos.hellyer.kiwi/privkey.pem;
+		spam-destroyer.hellyer.kiwi   /etc/letsencrypt/live/spam-destroyer.hellyer.kiwi/privkey.pem;
+	}
+
 	# Final no-cache decision combining platform + cookies.
 	map "$platform_type:$http_cookie" $no_cache_platform {
 		"~*wordpress:(comment_author|wordpress_[a-f0-9]+|wp-postpass|wordpress_logged_in)" 1;

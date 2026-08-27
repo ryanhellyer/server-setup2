@@ -16,7 +16,9 @@
 #
 # One-time manual step: the PUBLIC key must be authorized on the box
 # (Hetzner Robot -> Storage Box -> SSH keys, or place it in the box's
-# ~/.ssh/authorized_keys via sftp). Until then this prints a clear error.
+# ~/.ssh/authorized_keys via sftp). When run interactively (from a deploy)
+# this stops and waits for you to do that, then retries on Enter, or lets you
+# skip with 's'. Non-interactive runs just fail with the instructions.
 #
 #   sudo ./scripts/sync-site.sh     (also called automatically by deploy.sh)
 # =============================================================================
@@ -42,23 +44,62 @@ if [ ! -f "$KEY" ]; then
   exit 1
 fi
 
+run_sync() {
+  # BatchMode=yes: never prompt for a password — an unauthorized key fails
+  # fast so we can show the "add the key" instructions instead of hanging.
+  rsync -az --delete \
+    --exclude='*.log' \
+    --exclude='.cache' \
+    --exclude='lost+found' \
+    -e "ssh -i $KEY -p $PORT -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+    "$USER@$HOST:$SRC/" "$DEST/"
+}
+
 echo "==> importing $USER@$HOST:$SRC -> $DEST"
 mkdir -p "$DEST"
 
-if ! rsync -az --delete \
-     --exclude='*.log' \
-     --exclude='.cache' \
-     --exclude='lost+found' \
-     -e "ssh -i $KEY -p $PORT -o StrictHostKeyChecking=accept-new" \
-     "$USER@$HOST:$SRC/" "$DEST/"; then
+if ! run_sync; then
   echo
-  echo "!! rsync failed — the Hetzner box rejected the connection."
-  echo "   The public key must be authorized on the box (one-time, manual):"
-  echo "     Hetzner Robot -> Storage Box -> SSH keys -> paste:"
-  echo "       $(cat "$KEY.pub" 2>/dev/null || echo "(key not readable)")"
-  echo "   (or one-time sftp -P $PORT $USER@$HOST and place the .pub in ~/.ssh/authorized_keys)"
-  echo "   Then re-run: sudo bash scripts/sync-site.sh"
-  exit 1
+  echo "!! The Hetzner box rejected the connection — the SSH key is not"
+  echo "   authorized on it yet (one-time, manual):"
+  echo
+  echo "   1. Paste this PUBLIC key into the box:"
+  echo "        Hetzner Robot -> Storage Box -> $USER -> SSH keys"
+  echo "        $(cat "$KEY.pub" 2>/dev/null || echo "(key not readable)")"
+  echo "      (or one-time: sftp -P $PORT $USER@$HOST and place the .pub"
+  echo "       in ~/.ssh/authorized_keys)"
+  echo
+
+  if [ -t 0 ]; then
+    attempts=0
+    while [ "$attempts" -lt 5 ]; do
+      read -r -p "Press Enter once the key is added to the Hetzner box to retry, or 's' to skip the import: " answer
+      case "$answer" in
+        s|S|skip)
+          echo "Skipping site import. (Run 'sudo bash scripts/sync-site.sh' later to re-sync.)"
+          exit 0
+          ;;
+        "")
+          if run_sync; then
+            "$PWD/scripts/fix-perms.sh" "$DEST"
+            echo "Imported."
+            exit 0
+          fi
+          echo "!! Still rejected — the key hasn't been added yet?"
+          attempts=$((attempts + 1))
+          ;;
+        *)
+          echo "   ('s' = skip, or just press Enter to retry)"
+          ;;
+      esac
+    done
+    echo "Giving up after $attempts attempts — continuing without the import."
+    exit 1
+  else
+    echo "   (not interactive — authorize the key, then re-run:"
+    echo "    sudo bash scripts/sync-site.sh)"
+    exit 1
+  fi
 fi
 
 "$PWD/scripts/fix-perms.sh" "$DEST"

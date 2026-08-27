@@ -16,9 +16,11 @@ sudo ./scripts/certbot-issue.sh        # issue/renew every cert in domains.txt
 - The script runs the `certbot/certbot` image (or a local certbot if present)
   for each line, storing results under `env/letsencrypt/` (which compose mounts
   read-only into nginx as `/etc/letsencrypt`).
-- nginx config points every vhost at
-  `/etc/letsencrypt/live/pressabl12.hellyer.kiwi/...` — the combined cert used
-  by this server.
+- nginx selects each domain's certificate via the `$site_cert` / `$site_cert_key`
+  maps in `nginx.conf.template` (matched by SNI). Certs live in their own
+  `env/letsencrypt/live/<cert-name>/` dir; `default` is the self-signed
+  multi-SAN fallback `live/test-all`, so a domain that isn't (yet) in the map
+  still gets a name-matching cert instead of a name mismatch.
 
 ## Manual (single domain)
 

@@ -6,9 +6,10 @@
 user = www-data
 group = www-data
 
-; Group-write umask so files PHP creates (uploads, cache, ...) land as 664/775
-; and stay editable by the www-data group on the host (see scripts/fix-perms.sh).
-umask = 0002
+; NOTE: there is no `umask` directive in FPM pool config (php-fpm refuses to
+; start on it). The group-write umask (0002) so PHP-created files land as
+; 664/775 and stay editable by the www-data group is set in the container CMD
+; instead (see php/Containerfile).
 
 listen = /run/php/php8.5-fpm.sock
 listen.owner = www-data

@@ -122,13 +122,15 @@ fi
 "$PWD/scripts/render-config.sh"
 
 # ---- 5. bootstrap TLS cert (nginx -t needs ssl files to exist) ----
-CERT_DIR="env/letsencrypt/live/pressabl12.hellyer.kiwi"
+# Written to live/test-all — the nginx $site_cert map's default (the self-signed
+# multi-SAN test cert is regenerated over this in test mode by gen-test-certs.sh).
+CERT_DIR="env/letsencrypt/live/test-all"
 if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
   echo "==> no TLS cert yet — generating bootstrap self-signed cert"
   mkdir -p "$CERT_DIR"
   openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
     -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
-    -subj "/CN=pressabl12.hellyer.kiwi"
+    -subj "/CN=test-all"
 fi
 
 # ---- 6. create log dirs referenced by the nginx config ----
@@ -178,9 +180,11 @@ echo "==> apply web-dir permissions (ryan:www-data)"
 "$PWD/scripts/fix-perms.sh" /var/www
 
 # ---- 9c. import site snapshot(s) from the Hetzner storage box ----
-# .env-gated (HETZNER_SYNC_SRC empty = skipped). A failure here (e.g. the key
-# isn't authorized on the box yet) must NOT abort the deploy — print the
-# message and keep going, like the certbot step below.
+# .env-gated (HETZNER_SYNC_SRC empty = skipped). If the SSH key isn't
+# authorized on the box yet, sync-site.sh prints the one-time instructions and
+# (interactively) waits for you to do that, retrying on Enter or skipping with
+# 's'. A hard failure must NOT abort the deploy — print and keep going, like
+# the certbot step below.
 "$PWD/scripts/sync-site.sh" \
   || echo "==> (site import failed — see above; authorize the key, then re-run: sudo bash scripts/sync-site.sh)"
 
