@@ -1,6 +1,5 @@
-# TEST cert list — the domains that get a real Let's Encrypt cert on the test
-# server (each needs DNS pointed at this host first). Replace with the
-# production list (certbot/domains.txt) by setting CERTBOT_DOMAINS_FILE in
-# .env, or on production just leave .env empty.
-ionos.hellyer.kiwi ionos.hellyer.kiwi
-spam-destroyer.hellyer.kiwi spam-destroyer.hellyer.kiwi
+# TEST cert list — ONE real Let's Encrypt cert ("pressabl") covering the
+# domains listed below (each needs DNS pointed at this host first). When this
+# box becomes the production server, set CERTBOT_DOMAINS_FILE to
+# certbot/domains.txt (or leave .env unset) to move to the full production list.
+pressabl ionos.hellyer.kiwi spam-destroyer.hellyer.kiwi

@@ -12,11 +12,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
 
-CERT_DIR="env/letsencrypt/live/test-all"
+CERT_DIR="env/letsencrypt/live/pressabl"
 
 # Never clobber a real (certbot-issued) cert. certbot-issued certs always ship
-# chain.pem; the temporary self-signed cert does not. (test-all is only ever
-# the self-signed fallback — real certs live in their own live/<name>/ dirs.)
+# chain.pem; the temporary self-signed cert does not (and certbot writes
+# live/pressabl as a symlink to its archive/).
 if [ -L "$CERT_DIR" ] || [ -f "$CERT_DIR/chain.pem" ]; then
   echo "Real (certbot) certificate already in place — skipping temporary self-signed cert."
   exit 0

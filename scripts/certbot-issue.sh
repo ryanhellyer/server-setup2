@@ -8,10 +8,11 @@
 # Usage:  sudo ./scripts/certbot-issue.sh [--force]
 #   --force  force reissue even if a valid cert exists (rate-limit aware).
 #
-# Each server block serves ONE hardcoded certificate from its own live/<name>/
-# dir (blocks without a real cert serve live/test-all; deploy.sh seeds
-# placeholders so nginx starts even before certbot runs). This script only
-# issues certs into their own live/<name>/ dirs.
+# All server blocks serve the same `pressabl` cert (live/pressabl). This
+# script issues/renews it from certbot/domains.txt — one line per certificate
+# ("<cert-name> <domains...>"), so a single line with all domains = one
+# combined cert. deploy.sh/gen-test-certs.sh leave a self-signed placeholder
+# there so nginx starts even before the first issuance.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -63,6 +64,16 @@ issue_cert() {
     fi
   done
   [ "$unresolved" = "1" ] && return 0
+
+  # Clear a self-signed placeholder left by deploy.sh/gen-test-certs.sh: a real
+  # certbot cert is a symlink to archive/ and ships chain.pem. If live/$name is
+  # a plain dir without chain.pem it's our placeholder — remove it so certbot
+  # (which writes live/<name> as its own symlink) starts clean.
+  if [ -d "$LETSENCRYPT_DIR/live/$cert_name" ] && [ ! -L "$LETSENCRYPT_DIR/live/$cert_name" ] \
+     && [ ! -f "$LETSENCRYPT_DIR/live/$cert_name/chain.pem" ]; then
+    echo "  (removing self-signed placeholder at live/$cert_name)"
+    rm -rf "$LETSENCRYPT_DIR/live/$cert_name"
+  fi
 
   echo "==> Issuing/renewing $cert_name for: $domains"
   local args=()

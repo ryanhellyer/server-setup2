@@ -13,15 +13,15 @@ sudo ./scripts/certbot-issue.sh        # issue/renew every cert in domains.txt
 ## How it works
 
 - `domains.txt` lists certificates, one per line: `<cert-name> <domain>...`.
+  A single line with all the domains = one combined cert (the `pressabl` cert
+  here).
 - The script runs the `certbot/certbot` image (or a local certbot if present)
   for each line, storing results under `env/letsencrypt/` (which compose mounts
   read-only into nginx as `/etc/letsencrypt`).
-- Each server block serves **one** certificate (hardcoded path — nginx can't
-  reliably select a cert per-SNI via variables). Certs live in their own
-  `env/letsencrypt/live/<cert-name>/` dirs; blocks without a real cert serve
-  the self-signed multi-SAN fallback `live/test-all`. `deploy.sh` seeds a
-  placeholder into each `live/<name>` so a not-yet-issued cert doesn't stop
-  nginx from starting.
+- All server blocks reference the same **`pressabl`** cert
+  (`env/letsencrypt/live/pressabl`). `deploy.sh`/`gen-test-certs.sh` drop a
+  self-signed placeholder there so nginx always starts; `certbot-issue.sh`
+  removes any non-certbot placeholder first, then issues/renews the real cert.
 
 ## Manual (single domain)
 

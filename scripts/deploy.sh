@@ -142,16 +142,16 @@ fi
 "$PWD/scripts/render-config.sh"
 
 # ---- 5. bootstrap TLS cert (nginx -t needs ssl files to exist) ----
-# Written to live/test-all — the self-signed fallback served by server blocks
-# that don't have a real cert (the multi-SAN test cert is regenerated over
-# this in test mode by gen-test-certs.sh).
-CERT_DIR="env/letsencrypt/live/test-all"
+# Written to live/pressabl — every server block references this one path. In
+# test mode gen-test-certs.sh regenerates it as a multi-SAN self-signed cert;
+# certbot-issue.sh replaces it with the real cert.
+CERT_DIR="env/letsencrypt/live/pressabl"
 if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
   echo "==> no TLS cert yet — generating bootstrap self-signed cert"
   mkdir -p "$CERT_DIR"
   openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
     -keyout "$CERT_DIR/privkey.pem" -out "$CERT_DIR/fullchain.pem" \
-    -subj "/CN=test-all"
+    -subj "/CN=pressabl"
 fi
 
 # ---- 6. create log dirs referenced by the nginx config ----
@@ -179,25 +179,6 @@ if [ "$DEPLOY_ENV" = "test" ]; then
   # test site has a matching certificate. certbot replaces this in production.
   "$PWD/scripts/gen-test-certs.sh"
 fi
-
-# ---- 7b. placeholder certs for real-cert server blocks ----
-# Each server block serves ONE hardcoded certificate (nginx can't pick a cert
-# per SNI via variables reliably). If a block's live/<name> cert doesn't exist
-# when nginx starts, nginx refuses to start at all — so seed a copy of the
-# self-signed test-all cert into every live/<name> dir the config references,
-# then certbot replaces them with the real certs later.
-TEST_ALL_DIR="env/letsencrypt/live/test-all"
-CERT_NAMES="$(grep -rhoE 'ssl_certificate +/etc/letsencrypt/live/[^/]+/fullchain\.pem;' nginx/conf.d 2>/dev/null \
-  | sed -E 's#.*/live/([^/]+)/.*#\1#' | sort -u | grep -v '^test-all$')"
-for n in $CERT_NAMES; do
-  dir="env/letsencrypt/live/$n"
-  if [ ! -f "$dir/fullchain.pem" ]; then
-    echo "  seeding placeholder cert for $n (self-signed until certbot issues the real one)"
-    mkdir -p "$dir"
-    cp "$TEST_ALL_DIR/fullchain.pem" "$dir/fullchain.pem"
-    cp "$TEST_ALL_DIR/privkey.pem" "$dir/privkey.pem"
-  fi
-done
 
 # ---- 8. build + test nginx config ----
 echo "==> build nginx image (used for config validation)"
