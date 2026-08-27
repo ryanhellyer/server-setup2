@@ -67,17 +67,25 @@ if [ -n "$ALL_DOMAINS" ]; then
   fi
 fi
 
-grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$' | while read -r line; do
+# Issue each cert. certbot exits non-zero when nothing needed doing (e.g.
+# "Certificate not yet due for renewal"), which must NOT abort the script —
+# the nginx reload + symlink steps below have to run regardless so the real
+# cert is served. Capture and report the status, then carry on.
+while read -r line; do
   cert_name="$(echo "$line" | awk '{print $1}')"
   domains="$(echo "$line" | cut -d' ' -f2-)"
   args=()
   for d in $domains; do args+=(-d "$d"); done
 
   echo "==> Issuing/renewing $cert_name for: $domains"
-  "${CERTBOT[@]}" certonly --webroot -w "$WEBROOT" \
-      --cert-name "$cert_name" --expand "${EXTRA[@]}" \
-      --email "$EMAIL" --agree-tos --no-eff-email "${args[@]}"
-done
+  # --non-interactive: never prompt (e.g. "keep existing / renew & replace")
+  # when a cert already exists, so the script is safe under cron/deploy.
+  if ! "${CERTBOT[@]}" certonly --webroot -w "$WEBROOT" \
+      --cert-name "$cert_name" --expand --non-interactive "${EXTRA[@]}" \
+      --email "$EMAIL" --agree-tos --no-eff-email "${args[@]}"; then
+    echo "  (certbot exit $? for $cert_name — continuing)"
+  fi
+done < <(grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$')
 
 echo "==> Reloading nginx"
 podman exec "$CONTAINER_NGINX" nginx -s reload || true

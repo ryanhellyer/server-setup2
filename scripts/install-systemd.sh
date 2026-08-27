@@ -39,9 +39,9 @@ for c in "${CONTAINERS[@]}"; do
     continue
   fi
   echo "==> Generating systemd unit for $c"
-  if ! podman generate systemd --name "$c" --files >/dev/null 2>&1; then
-    podman generate systemd --name "$c" > "$SYSTEMD_DIR/container-$c.service"
-  fi
+  # Note: `--files` writes to the CURRENT directory, not to $SYSTEMD_DIR, so
+  # the unit must be redirected explicitly or `systemctl enable` below fails.
+  podman generate systemd --name "$c" > "$SYSTEMD_DIR/container-$c.service"
 done
 
 # nginx depends on the shared FPM socket: start it after php-fpm/node.
