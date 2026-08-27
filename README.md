@@ -17,7 +17,8 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/se
 
 That one command:
 
-1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...).
+1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...) plus the
+   **Starship prompt** for a nicer, consistent host shell (config in `config/starship.toml`).
 2. **Prompts to create an admin user `ryan`** with sudo privileges (skips it if
    the user already exists).
 3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
@@ -80,6 +81,7 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Restore from backup | `sudo bash scripts/restore.sh` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
+| Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
 
 ## Scheduled jobs (automatic)

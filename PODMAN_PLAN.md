@@ -41,6 +41,8 @@ Internet -> [Nginx proxy container :80/:443]   (Certbot TLS, brotli, gzip)
 *   Host runs **Ubuntu 26.04**. The host only needs podman, git, sshfs etc —
     nothing that lags behind on 26.04 — and all app packages live inside the
     containers (which stay on 24.04, where PHP 8.5 etc. are best supported).
+    The host shell gets the **Starship prompt** (`config/starship.toml`,
+    seeded by `host-setup.sh`) so SSH sessions look consistent.
 
 * * *
 
@@ -384,7 +386,7 @@ Applied **at deploy time** (documented here so you don't forget):
 | Script | What it does |
 |---|---|
 | `setup.sh` | THE entry point. Fresh host (curl\|bash): installs packages, creates the admin user, downloads the repo as a tarball (public repo — no git/keys), re-execs the installed copy. Installed server: interactive menu (deploy / new site / backup / restore / certs / test site / systemd / CLI tools / status / logs). |
-| `scripts/host-setup.sh` | Installs the host package set + creates bind-mount dirs + ensures swap (called by setup.sh and auto by deploy.sh). |
+| `scripts/host-setup.sh` | Installs the host package set + the Starship prompt (binary + `config/starship.toml` seeded to `/etc/skel` and the `ryan`/`root` users) + creates bind-mount dirs + ensures swap (called by setup.sh and auto by deploy.sh). |
 | `scripts/deploy.sh` | Full deploy: auto-installs podman if missing, opens firewall ports 22/80/443, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), renders nginx config, `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
 | `scripts/backup.sh` | Dumps all DBs, archives `/var/www`, prunes 14 days, rsyncs to Hetzner. |
