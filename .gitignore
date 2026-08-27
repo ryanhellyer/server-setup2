@@ -15,5 +15,10 @@ maria/init/*.sql
 # Local logs / caches
 *.log
 
-# Temporary local backups — NEVER commit (may contain mailboxes / secrets)
-/temp-backup/
+# Temp-backup: backup scripts + configs are versioned, but these stay local:
+#   credentials (Gmail app password, MySQL pass)
+/temp-backup/backups/secrets.env
+#   downloaded mailboxes
+/temp-backup/backups/getmail/oldmail-*
+#   transient cron/backup logs
+/temp-backup/*.log
