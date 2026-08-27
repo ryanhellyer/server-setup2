@@ -8,9 +8,10 @@
 # Usage:  sudo ./scripts/certbot-issue.sh [--force]
 #   --force  force reissue even if a valid cert exists (rate-limit aware).
 #
-# nginx selects each domain's certificate via the $site_cert / $site_cert_key
-# maps in nginx.conf.template (default = the self-signed live/test-all
-# fallback). This script only issues certs into their own live/<name>/ dirs.
+# Each server block serves ONE hardcoded certificate from its own live/<name>/
+# dir (blocks without a real cert serve live/test-all; deploy.sh seeds
+# placeholders so nginx starts even before certbot runs). This script only
+# issues certs into their own live/<name>/ dirs.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."

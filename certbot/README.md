@@ -16,11 +16,12 @@ sudo ./scripts/certbot-issue.sh        # issue/renew every cert in domains.txt
 - The script runs the `certbot/certbot` image (or a local certbot if present)
   for each line, storing results under `env/letsencrypt/` (which compose mounts
   read-only into nginx as `/etc/letsencrypt`).
-- nginx selects each domain's certificate via the `$site_cert` / `$site_cert_key`
-  maps in `nginx.conf.template` (matched by SNI). Certs live in their own
-  `env/letsencrypt/live/<cert-name>/` dir; `default` is the self-signed
-  multi-SAN fallback `live/test-all`, so a domain that isn't (yet) in the map
-  still gets a name-matching cert instead of a name mismatch.
+- Each server block serves **one** certificate (hardcoded path — nginx can't
+  reliably select a cert per-SNI via variables). Certs live in their own
+  `env/letsencrypt/live/<cert-name>/` dirs; blocks without a real cert serve
+  the self-signed multi-SAN fallback `live/test-all`. `deploy.sh` seeds a
+  placeholder into each `live/<name>` so a not-yet-issued cert doesn't stop
+  nginx from starting.
 
 ## Manual (single domain)
 

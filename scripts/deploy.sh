@@ -142,8 +142,9 @@ fi
 "$PWD/scripts/render-config.sh"
 
 # ---- 5. bootstrap TLS cert (nginx -t needs ssl files to exist) ----
-# Written to live/test-all — the nginx $site_cert map's default (the self-signed
-# multi-SAN test cert is regenerated over this in test mode by gen-test-certs.sh).
+# Written to live/test-all — the self-signed fallback served by server blocks
+# that don't have a real cert (the multi-SAN test cert is regenerated over
+# this in test mode by gen-test-certs.sh).
 CERT_DIR="env/letsencrypt/live/test-all"
 if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
   echo "==> no TLS cert yet — generating bootstrap self-signed cert"
@@ -179,19 +180,19 @@ if [ "$DEPLOY_ENV" = "test" ]; then
   "$PWD/scripts/gen-test-certs.sh"
 fi
 
-# ---- 7b. placeholder certs for mapped real-cert domains ----
-# nginx selects a per-SNI cert from the $site_cert map (variable-based
-# ssl_certificate loads lazily: if a mapped file is missing, that domain's
-# handshake fails with ERR_SSL_PROTOCOL_ERROR). Seed a copy of the self-signed
-# test-all cert into every mapped live/<name> dir so each domain degrades to
-# the bypassable fallback until certbot issues the real cert and reloads.
+# ---- 7b. placeholder certs for real-cert server blocks ----
+# Each server block serves ONE hardcoded certificate (nginx can't pick a cert
+# per SNI via variables reliably). If a block's live/<name> cert doesn't exist
+# when nginx starts, nginx refuses to start at all — so seed a copy of the
+# self-signed test-all cert into every live/<name> dir the config references,
+# then certbot replaces them with the real certs later.
 TEST_ALL_DIR="env/letsencrypt/live/test-all"
-MAPPED_CERT_DOMAINS="$(sed -n '/map \$ssl_server_name \$site_cert {/,/}/p' nginx/nginx.conf.template \
-  | awk '!/default/ && /fullchain\.pem/ {print $1}')"
-for d in $MAPPED_CERT_DOMAINS; do
-  dir="env/letsencrypt/live/$d"
+CERT_NAMES="$(grep -rhoE 'ssl_certificate +/etc/letsencrypt/live/[^/]+/fullchain\.pem;' nginx/conf.d 2>/dev/null \
+  | sed -E 's#.*/live/([^/]+)/.*#\1#' | sort -u | grep -v '^test-all$')"
+for n in $CERT_NAMES; do
+  dir="env/letsencrypt/live/$n"
   if [ ! -f "$dir/fullchain.pem" ]; then
-    echo "  seeding placeholder cert for $d (self-signed until certbot issues the real one)"
+    echo "  seeding placeholder cert for $n (self-signed until certbot issues the real one)"
     mkdir -p "$dir"
     cp "$TEST_ALL_DIR/fullchain.pem" "$dir/fullchain.pem"
     cp "$TEST_ALL_DIR/privkey.pem" "$dir/privkey.pem"
