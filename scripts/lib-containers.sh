@@ -7,14 +7,14 @@
 #   source scripts/lib-containers.sh
 #
 # Keep the names in sync with compose.yaml (the deployment source of truth —
-# services: nginx / php (container_name: php-fpm) / node / mariadb / redis).
+# services: nginx / php (container_name: php-fpm) / node / mariadb / valkey).
 # =============================================================================
 
 # ---- canonical container names (must match compose.yaml) ----
 CONTAINER_NGINX="nginx"
 CONTAINER_PHP_FPM="php-fpm"
 CONTAINER_MARIADB="mariadb"
-CONTAINER_REDIS="redis"
+CONTAINER_VALKEY="valkey"
 CONTAINER_NODE="node"
 
 # Ordered container inventory (nginx last: it depends on php-fpm/node sockets).
@@ -22,7 +22,7 @@ ALL_CONTAINERS=(
   "$CONTAINER_NGINX"
   "$CONTAINER_PHP_FPM"
   "$CONTAINER_MARIADB"
-  "$CONTAINER_REDIS"
+  "$CONTAINER_VALKEY"
   "$CONTAINER_NODE"
 )
 
@@ -35,8 +35,9 @@ declare -A CLI_CONTAINER=(
   [zip]=php-fpm [unzip]=php-fpm [sqlite3]=php-fpm [gs]=php-fpm [pdftoppm]=php-fpm
   # mariadb
   [mariadb]=mariadb [mysql]=mariadb [mysqldump]=mariadb [mariadb-dump]=mariadb
-  # redis
-  [redis-cli]=redis
+  # valkey (drop-in Redis replacement; `redis-cli` kept as a compat alias)
+  [valkey-cli]=valkey
+  [redis-cli]=valkey
   # node
   [node]=node [npm]=node [npx]=node
   # nginx

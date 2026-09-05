@@ -29,6 +29,7 @@ RUN apt-get update \
         php8.5-gd \
         php8.5-curl \
         php8.5-xml \
+        # phpredis talks to Valkey (drop-in Redis replacement) over RESP.
         php8.5-redis \
         php8.5-sqlite3 \
         ffmpeg \

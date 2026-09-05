@@ -63,15 +63,21 @@ services:
     networks: [backend]
     restart: unless-stopped
 
-  redis:
-    image: docker.io/redis:7-alpine
-    container_name: redis
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--maxmemory", "${REDIS_MAXMEMORY:-64mb}"]
+  # Valkey is a drop-in, RESP-compatible fork of Redis. It keeps the `redis`
+  # network alias so existing WP/Laravel cache configs (which use host `redis`)
+  # keep working unchanged; new configs can use `valkey`.
+  valkey:
+    image: docker.io/valkey/valkey:8-alpine
+    container_name: valkey
+    command: ["valkey-server", "/etc/valkey/valkey.conf", "--maxmemory", "${VALKEY_MAXMEMORY:-${REDIS_MAXMEMORY:-64mb}}"]
     environment:
-      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-64mb}
+      VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-${REDIS_MAXMEMORY:-64mb}}
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    networks: [backend]
+      - ./valkey/valkey.conf:/etc/valkey/valkey.conf:ro
+    networks:
+      backend:
+        aliases:
+          - redis
     restart: unless-stopped
 
 volumes:

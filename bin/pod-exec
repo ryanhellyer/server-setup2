@@ -16,7 +16,7 @@
 #   pdftoppm -png -r 150 doc.pdf page
 #   mariadb -e 'SHOW DATABASES;'
 #   mysqldump pressabl > /var/databases/pressabl.sql
-#   redis-cli ping
+#   valkey-cli ping                 # `redis-cli` works too (compat alias)
 #   npm install
 #   nginx -t
 #   nginx-reload
@@ -53,6 +53,7 @@ else
   BIN="$NAME"
   case "$NAME" in
     artisan)       BIN="php" ;;
+    redis-cli)     BIN="valkey-cli" ;;   # drop-in compat alias
     php-reload)    BIN="sh"; set -- -c 'php-fpm8.5 -t && kill -USR2 1' ;;
     nginx-reload)  BIN="sh"; set -- -c 'nginx -t && nginx -s reload' ;;
     nginx-test)    BIN="nginx"; set -- -t ;;

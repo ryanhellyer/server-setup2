@@ -1,7 +1,7 @@
 # server-setup
 
 The containerised web stack for **hellyer.kiwi** (Nginx + PHP 8.5 + MariaDB +
-Redis + Node), deployed with Podman. Everything needed to rebuild the server
+Valkey + Node), deployed with Podman. Everything needed to rebuild the server
 lives in this repo.
 
 ## Install on a fresh Ubuntu server — one line
@@ -27,7 +27,7 @@ That one command:
    is off).
 5. **Deploys** — creates `.env` and opens it in **nano** for you to fill in
    secrets, builds the nginx + PHP images, brings up the whole stack (nginx,
-   php-fpm, mariadb, redis, node), installs systemd units so it starts at boot,
+   php-fpm, mariadb, valkey, node), installs systemd units so it starts at boot,
    schedules the **nightly backup** and **TLS renewal** (systemd timers, no
    cron needed), and **issues the real TLS cert for `ionos.hellyer.kiwi`
    automatically** (it checks DNS first — if DNS isn't propagated yet, it tells

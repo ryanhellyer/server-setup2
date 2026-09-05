@@ -21,9 +21,10 @@ $checks[] = status(extension_loaded('imagick'), 'php-imagick', '');
 $checks[] = status(extension_loaded('gd'), 'php-gd', '');
 $checks[] = status(function_exists('exec') && trim(@shell_exec('ffmpeg -version 2>/dev/null | head -1')) !== '', 'ffmpeg', trim(@shell_exec('ffmpeg -version 2>/dev/null | head -1')));
 
-// Redis connectivity (container network: the php container can reach `redis`).
+// Valkey connectivity (drop-in Redis replacement; container reachable at both
+// `valkey` and the legacy `redis` network alias from the php container).
 $redis = false; $redisDetail = '';
-$sock = @fsockopen('redis', 6379, $errno, $errstr, 2);
+$sock = @fsockopen('valkey', 6379, $errno, $errstr, 2);
 if ($sock) {
     fwrite($sock, "PING\r\n");
     $resp = trim((string)fgets($sock));
@@ -31,7 +32,7 @@ if ($sock) {
     $redis = strtoupper($resp) === '+PONG';
     $redisDetail = $resp;
 }
-$checks[] = status($redis, 'Redis 127.0.0.1:6379', $redisDetail);
+$checks[] = status($redis, 'Valkey 127.0.0.1:6379 (alias redis)', $redisDetail);
 
 // MariaDB connectivity (optional — only if creds are provided).
 $db = null; $dbDetail = 'creds not provided (skip)';
