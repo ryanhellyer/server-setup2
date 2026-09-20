@@ -19,7 +19,7 @@ That one command:
 
 1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...) plus the
    **Starship prompt** for a nicer, consistent host shell (config in `config/starship.toml`).
-2. **Prompts to create an admin user `ryan`** with your SSH key and passwordless
+2. **Creates an admin user `ryan`** with your SSH key and passwordless
    `sudo` (no account password — access is key-only; `scripts/create-admin-user.sh`).
 3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
    so no SSH keys, no git, no GitHub console work are needed.

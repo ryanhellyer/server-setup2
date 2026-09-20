@@ -14,7 +14,7 @@
 #       2. Downloads this whole repo as a tarball from GitHub (public repo — no
 #          SSH keys needed) into /opt/server-setup and writes a .tarball marker
 #          so deploy.sh can refresh the files the same way later.
-#       3. Prompts to create an admin user 'ryan' — key-based, with passwordless
+#       3. Creates an admin user 'ryan' — key-based, with passwordless
 #          sudo (scripts/create-admin-user.sh). SERVER_SETUP_ADMIN_KEY supplies
 #          the caller's key when run via bootstrap.sh.
 #       4. Re-execs the installed copy, which presents the menu.
@@ -127,14 +127,13 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   # SERVER_SETUP_ADMIN_KEY lets a remote caller (bootstrap.sh) supply the
   # caller's own key. Fallback: the maintainer's key, so a bare `curl | bash`
   # install still ends up with passwordless SSH. No password is set on the
-  # account — access is key-only, with passwordless sudo.
+  # account — access is key-only, with passwordless sudo. Always done (no
+  # prompt): a fresh host must have the admin user + key.
   DEFAULT_ADMIN_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX ryanhellyer@gmail.com'
-  if ask_yn "Create/update admin user 'ryan' with sudo and your SSH key?"; then
-    ADMIN_USER=ryan \
-      ADMIN_KEY="${SERVER_SETUP_ADMIN_KEY:-$DEFAULT_ADMIN_KEY}" \
-      bash "$REPO_DIR/scripts/create-admin-user.sh"
-    ok "Admin user 'ryan' ready (key-based, passwordless sudo)."
-  fi
+  ADMIN_USER=ryan \
+    ADMIN_KEY="${SERVER_SETUP_ADMIN_KEY:-$DEFAULT_ADMIN_KEY}" \
+    bash "$REPO_DIR/scripts/create-admin-user.sh"
+  ok "Admin user 'ryan' ready (key-based, passwordless sudo)."
 
   # ---- full host setup: packages + bind-mount dirs + swap ----
   # (delegates to host-setup.sh so the package list lives in ONE place; also
@@ -144,10 +143,10 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   ok "Host packages installed."
 
   # ---- Hetzner storage-box access + mounts (asks for each box password once) ----
-  if ask_yn "Set up Hetzner Storage Box access and mounts (gmail + databases) now?"; then
-    bash "$REPO_DIR/scripts/hetzner-mounts.sh" \
-      || say "Hetzner mounts not configured — use menu option 11 later."
-  fi
+  # Always set up: authorises this server's key on both boxes and mounts the
+  # u458814 gmail + databases shares under the admin user's home.
+  bash "$REPO_DIR/scripts/hetzner-mounts.sh" \
+    || say "Hetzner mounts not configured — use menu option 11 later."
 
   say "Re-running the installed copy to present the menu."
   cd "$REPO_DIR"
