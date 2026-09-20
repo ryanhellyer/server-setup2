@@ -24,18 +24,25 @@ WWW_ROOT="$(resolve_www_root)"
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
-WEBROOT="$WWW_ROOT/acme"
+# The webroot exists at TWO paths: $WWW_ROOT/acme on the host, and
+# /var/www/acme inside the containers (nginx serves it there; compose mounts
+# the host dir onto it). certbot must be told the path it will actually see:
+# the container path when run via podman, the host path when run natively.
+WEBROOT_HOST="$WWW_ROOT/acme"
+ACME_IN_CONTAINER="$CONTAINER_WWW/acme"
 LETSENCRYPT_DIR="$PWD/env/letsencrypt"
 DOMAINS_FILE="${CERTBOT_DOMAINS_FILE:-certbot/domains.txt}"
 EMAIL="${CERTBOT_EMAIL:-admin@hellyer.kiwi}"
 
 [ -f "$DOMAINS_FILE" ] || { echo "Missing $DOMAINS_FILE"; exit 1; }
-mkdir -p "$WEBROOT" "$LETSENCRYPT_DIR"
+mkdir -p "$WEBROOT_HOST/.well-known/acme-challenge" "$LETSENCRYPT_DIR"
 
 if command -v certbot >/dev/null 2>&1; then
   CERTBOT=(certbot)
+  CERTBOT_WEBROOT="$WEBROOT_HOST"
 else
-  CERTBOT=(podman run --rm -v "$LETSENCRYPT_DIR:/etc/letsencrypt" -v "$WEBROOT:/var/www/acme" docker.io/certbot/certbot)
+  CERTBOT=(podman run --rm -v "$LETSENCRYPT_DIR:/etc/letsencrypt" -v "$WEBROOT_HOST:$ACME_IN_CONTAINER" docker.io/certbot/certbot)
+  CERTBOT_WEBROOT="$ACME_IN_CONTAINER"
 fi
 
 EXTRA=()
@@ -50,6 +57,8 @@ EXTRA=()
 # real judge, and its error (if any) is shown below.
 PUBLIC_IP="$(curl -fsSL --max-time 10 https://ifconfig.me 2>/dev/null \
   || curl -fsSL --max-time 10 https://icanhazip.com 2>/dev/null || true)"
+
+FAILED=0
 
 issue_cert() {
   local line="$1" cert_name domains d ip unresolved
@@ -82,10 +91,18 @@ issue_cert() {
   for d in $domains; do args+=(-d "$d"); done
   # --non-interactive: never prompt (e.g. "keep existing / renew & replace")
   # when a cert already exists, so the script is safe under cron/deploy.
-  if ! "${CERTBOT[@]}" certonly --webroot -w "$WEBROOT" \
+  # `set +e` around the call so a failure doesn't abort before we report it.
+  set +e
+  "${CERTBOT[@]}" certonly --webroot -w "$CERTBOT_WEBROOT" \
       --cert-name "$cert_name" --expand --non-interactive "${EXTRA[@]}" \
-      --email "$EMAIL" --agree-tos --no-eff-email "${args[@]}"; then
-    echo "  (certbot exit $? for $cert_name — continuing)"
+      --email "$EMAIL" --agree-tos --no-eff-email "${args[@]}"
+  local rc=$?
+  set -e
+  if [ "$rc" -ne 0 ] && [ ! -e "$LETSENCRYPT_DIR/live/$cert_name/fullchain.pem" ]; then
+    echo "  !! certbot exited $rc and produced no certificate for $cert_name"
+    FAILED=1
+  elif [ "$rc" -ne 0 ]; then
+    echo "  (certbot exited $rc for $cert_name but a certificate exists — continuing)"
   fi
 }
 
@@ -93,7 +110,20 @@ while read -r line; do
   issue_cert "$line"
 done < <(grep -v '^#' "$DOMAINS_FILE" | grep -v '^[[:space:]]*$')
 
+# If issuance failed after the self-signed placeholder was removed, nginx would
+# refuse to (re)start. Regenerate a placeholder so the stack stays bootable.
+if [ ! -e "$LETSENCRYPT_DIR/live/pressabl/fullchain.pem" ]; then
+  echo "!! No certificate at live/pressabl — regenerating a self-signed placeholder."
+  bash "$PWD/scripts/gen-test-certs.sh" || true
+  FAILED=1
+fi
+
 echo "==> Reloading nginx"
 podman exec "$CONTAINER_NGINX" nginx -s reload || true
+
+if [ "$FAILED" -ne 0 ]; then
+  echo "!! One or more certificates could not be issued (see messages above)."
+  exit 1
+fi
 
 echo "Certificates up to date."
