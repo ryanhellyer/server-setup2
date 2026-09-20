@@ -31,6 +31,18 @@ source scripts/lib-paths.sh
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo bash scripts/deploy.sh)."; exit 1; }
 
+# Safety: deploy.sh installs on the machine it RUNS on, never remotely. If this
+# isn't an Ubuntu + systemd host you're likely on the wrong machine (e.g. a
+# laptop). setup.sh does the same check before its menu.
+if [ "${SETUP_ALLOW_UNSUPPORTED:-0}" != "1" ]; then
+  if ! command -v apt-get >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
+    echo "!! This host does not look like the target Ubuntu server (needs apt-get + systemd)."
+    echo "!! To install a REMOTE server from your laptop, run: ./bootstrap.sh --host <ip>"
+    echo "!! (Override with SETUP_ALLOW_UNSUPPORTED=1 if you really mean to run here.)"
+    exit 1
+  fi
+fi
+
 # ---- 1. host packages (podman etc.) ----
 if ! command -v podman >/dev/null 2>&1 || ! command -v podman-compose >/dev/null 2>&1 \
    || ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then

@@ -36,6 +36,12 @@ That one command:
 No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
 finishes.
 
+> **Where does each script run?** `setup.sh` (and `deploy.sh`) install on the
+> machine they are **executed on** — they do not touch anything remote. Run
+> `setup.sh` **on the server**. To install a *remote* server from your laptop,
+> use `bootstrap.sh` below. (Both refuse to run on a host without `apt-get` +
+> `systemd`, so a stray `setup.sh` on your laptop won't install anything.)
+
 ## Install / manage a remote server from your laptop
 
 `bootstrap.sh` provisions and drives a server over SSH from your own machine.

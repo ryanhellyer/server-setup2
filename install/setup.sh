@@ -74,6 +74,7 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   # ---- host packages ----
   if ! command -v apt-get >/dev/null 2>&1; then
     echo "This installer needs an Ubuntu/Debian host (apt-get). Aborting."
+    echo "To install a REMOTE server from your laptop, run: ./bootstrap.sh --host <ip>"
     exit 1
   fi
 
@@ -159,9 +160,28 @@ fi
 cd "$REPO_DIR"
 source scripts/lib-containers.sh
 
-# The menu is interactive — without a terminal, tell the caller to use the
-# automation path instead of looping on failed reads.
-if [ ! -e /dev/tty ]; then
+# ---- safety: setup.sh acts on the machine it RUNS on, never remotely ----
+# The stack targets Ubuntu + systemd. If either is missing you're almost
+# certainly on the wrong machine (e.g. a laptop), where a stray menu choice
+# could install/modify local services. Point people at bootstrap.sh instead.
+if [ "${SETUP_ALLOW_UNSUPPORTED:-0}" != "1" ]; then
+  if ! command -v apt-get >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
+    echo
+    echo "!! This host does not look like the target Ubuntu server (needs apt-get + systemd)."
+    echo "!! setup.sh installs on THIS machine. To install a REMOTE server, run this"
+    echo "!! from your laptop instead:"
+    echo
+    echo "!!     ./bootstrap.sh --host <server-ip>"
+    echo
+    echo "!! (If you really mean to run here, prefix with SETUP_ALLOW_UNSUPPORTED=1.)"
+    exit 1
+  fi
+fi
+
+# The menu is interactive — without a usable terminal, tell the caller to use
+# the automation path instead of looping on failed reads. (Testing the node with
+# `[ -e /dev/tty ]` is not enough: the node exists even with no controlling tty.)
+if ! { : < /dev/tty; } 2>/dev/null; then
   echo "No terminal available (piped/automation). Run the scripts directly:"
   echo "  sudo bash scripts/deploy.sh"
   echo "  sudo bash scripts/new-site.sh <domain> <type>"
