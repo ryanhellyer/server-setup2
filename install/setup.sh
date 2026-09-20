@@ -129,11 +129,18 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   bash "$REPO_DIR/scripts/host-setup.sh"
   ok "Host packages installed."
 
-  # ---- Hetzner storage-box access + mounts (asks for each box password once) ----
+  # ---- remote storage access + mounts (asks for each box password once) ----
   # Always set up: authorises this server's key on both boxes and mounts the
-  # u458814 gmail + databases shares under the admin user's home.
-  bash "$REPO_DIR/scripts/hetzner-mounts.sh" \
-    || say "Hetzner mounts not configured — use menu option 11 later."
+  # primary box's gmail + databases shares under the admin user's home.
+  bash "$REPO_DIR/scripts/storage-mounts.sh" \
+    || say "Storage mounts not configured — use menu option 10 later."
+
+  # ---- first deploy (brings the stack up + imports every site/DB/Open WebUI) ----
+  # Fully automatic: deploy.sh generates .env, starts the containers, and
+  # provision-all.sh imports everything fresh from the newest snapshot.
+  say "Running the first deploy (this may take a while)"
+  bash "$REPO_DIR/scripts/deploy.sh" \
+    || say "Deploy had failures — re-run it from the menu (option 1)."
 
   say "Re-running the installed copy to present the menu."
   cd "$REPO_DIR"
@@ -183,13 +190,12 @@ show_menu() {
   echo " 3) Back up"
   echo " 4) Restore from backup"
   echo " 5) Issue / renew TLS certificates"
-  echo " 6) Scaffold the ionos test site"
-  echo " 7) Re-install systemd units"
-  echo " 8) Install host CLI tools (php, composer, mariadb, ...)"
-  echo " 9) Show stack status"
-  echo "10) Tail container logs"
-  echo "11) Connect the Hetzner Storage Boxes"
-  echo "12) Harden SSH (disable password authentication)"
+  echo " 6) Re-install systemd units"
+  echo " 7) Install host CLI tools (php, composer, mariadb, ...)"
+  echo " 8) Show stack status"
+  echo " 9) Tail container logs"
+  echo "10) Connect the storage boxes"
+  echo "11) Harden SSH (disable password authentication)"
   echo " 0) Quit"
   echo
 }
@@ -248,13 +254,12 @@ while true; do
     3) sudo bash scripts/backup.sh ;;
     4) sudo bash scripts/restore.sh ;;
     5) sudo bash scripts/certbot-issue.sh ;;
-    6) sudo bash scripts/test-site.sh ;;
-    7) sudo bash scripts/install-systemd.sh ;;
-    8) bash scripts/install-cli.sh ;;
-    9) podman ps ;;
-    10) pick_container ;;
-    11) sudo bash scripts/hetzner-mounts.sh ;;
-    12) sudo bash scripts/harden-sshd.sh ;;
+    6) sudo bash scripts/install-systemd.sh ;;
+    7) bash scripts/install-cli.sh ;;
+    8) podman ps ;;
+    9) pick_container ;;
+    10) sudo bash scripts/storage-mounts.sh ;;
+    11) sudo bash scripts/harden-sshd.sh ;;
     0|q|quit) echo "Bye."; exit 0 ;;
     *) echo "Invalid choice." ;;
   esac

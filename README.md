@@ -6,35 +6,31 @@ lives in this repo.
 
 ## Install on a fresh Ubuntu server — one line
 
-**First, point DNS:** create an `A` record `ionos.hellyer.kiwi` → this host's IP.
-That's the one manual step (it lives in your DNS provider) — everything below is
-automatic.
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install/setup.sh \
   -o /tmp/setup.sh && sudo bash /tmp/setup.sh
 ```
 
-That one command:
+That one command is fully hands-off after the two prompt types below:
 
 1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...) plus the
-   **Starship prompt** for a nicer, consistent host shell (config in `config/starship.toml`).
-2. **Creates an admin user `ryan`** with your SSH key and passwordless
-   `sudo` (no account password — access is key-only; `scripts/create-admin-user.sh`).
-3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
-   so no SSH keys, no git, no GitHub console work are needed.
-4. **Opens the firewall ports** 22/80/443 (added automatically; harmless if ufw
-   is off).
-5. **Deploys** — creates `.env` and opens it in **nano** for you to fill in
-   secrets, builds the nginx + PHP images, brings up the whole stack (nginx,
-   php-fpm, mariadb, valkey, node), installs systemd units so it starts at boot,
-   schedules the **nightly backup** and **TLS renewal** (systemd timers, no
-   cron needed), and **issues the real TLS cert for `ionos.hellyer.kiwi`
-   automatically** (it checks DNS first — if DNS isn't propagated yet, it tells
-   you exactly what to do and you just re-run `sudo ./install/setup.sh`).
+   **Starship prompt** (config in `config/starship.toml`).
+2. **Creates an admin user `ryan`** with your SSH key and passwordless `sudo`
+   (key-only; `scripts/create-admin-user.sh`).
+3. **Downloads the repo as a tarball** from GitHub (public — no git/keys needed).
+4. **Opens the firewall ports** 22/80/443.
+5. **Generates a standard storage key** (`~/.ssh/id_ed25519`) and authorises it on
+   both storage boxes, then mounts `gmail`/`databases` under `ryan`'s home.
+6. **Deploys automatically** — creates `.env` with a generated MariaDB root
+   password (no editor), builds the images, brings up the whole stack, installs
+   systemd units + the nightly-backup/TLS-renewal timers, then **imports every
+   site (files + databases, each with its own DB user) and the Open WebUI data**
+   from the newest storage snapshot.
+7. **Issues real TLS** for the domains in `CERTBOT_DOMAINS_FILE` (test mode: the
+   test domain(s)); this needs DNS pointed at the host first.
 
-No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
-finishes.
+The only manual bits: **point DNS** at this host, and type each **storage box
+password once** when asked (to authorise the key).
 
 > **Where does each script run?** `install/setup.sh` (and `deploy.sh`) install on the
 > machine they are **executed on** — they do not touch anything remote. Run
@@ -81,13 +77,12 @@ menu that delegates to the scripts in `scripts/`:
 - **3)** back up
 - **4)** restore from backup
 - **5)** issue / renew TLS certificates
-- **6)** scaffold the ionos test site
-- **7)** re-install systemd units
-- **8)** install host CLI tools (php, composer, mariadb, ...)
-- **9)** show stack status
-- **10)** tail container logs
-- **11)** connect the Hetzner Storage Boxes (passwordless key + `gmail`/`databases` mounts)
-- **12)** harden SSH (disable password authentication)
+- **6)** re-install systemd units
+- **7)** install host CLI tools (php, composer, mariadb, ...)
+- **8)** show stack status
+- **9)** tail container logs
+- **10)** connect the storage boxes (passwordless key + `gmail`/`databases` mounts)
+- **11)** harden SSH (disable password authentication)
 
 ## Manual path
 
@@ -97,7 +92,7 @@ mkdir -p /opt/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
-cp .env.example .env && nano .env      # scripts/deploy.sh does this for you automatically
+cp .env.example .env      # scripts/deploy.sh does this (with generated secrets) automatically
 sudo ./install/setup.sh                 # menu: pick "Full install / deploy / update"
 ```
 
@@ -118,10 +113,10 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Restore from backup | `sudo bash scripts/restore.sh` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
-| Import/re-sync a site from the Hetzner storage box | `sudo bash scripts/sync-site.sh` (auto-run by `deploy.sh`) |
-| Restore one site fully (files + DB) | `sudo bash scripts/provision-site.sh <site-dir>` |
+| Import every site + DB + Open WebUI (always fresh) | `sudo bash scripts/provision-all.sh` (auto-run by `deploy.sh`) |
+| Restore one site fully (files + DB) | `sudo bash scripts/provision-site.sh <snapshot-dir> [--to <dir>]` |
 | Restore every site found in the snapshot | `sudo bash scripts/migrate-sites.sh [--dry-run]` |
-| Set up Hetzner Storage Box access (both boxes) + mount `gmail`, `databases` | `sudo bash scripts/hetzner-mounts.sh` |
+| Connect the storage boxes + mount `gmail`, `databases` | `sudo bash scripts/storage-mounts.sh` |
 | Create/refresh the admin user (`ryan`) with a key + passwordless sudo | `sudo bash scripts/create-admin-user.sh` |
 | Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
 | Provision/install a remote server, or open its menu over SSH | `./bootstrap.sh --host <ip>` |
@@ -143,7 +138,7 @@ scripts translate between the two via `scripts/lib-paths.sh`.
 
 > **Upgrading a box that still has content in `/var/www`?** Move it once:
 > `sudo install -d -o ryan -g www-data -m 2775 /home/ryan/www && sudo rsync -a /var/www/ /home/ryan/www/`,
-> then `sudo bash scripts/deploy.sh` (or re-run `scripts/sync-site.sh`).
+> then `sudo bash scripts/deploy.sh` (or re-run `scripts/provision-all.sh`).
 
 `~/www` uses a shared-hosting permission model so files stay editable both by
 `ryan` (SSH) and by the containers (`www-data` — same uid/gid 33 on host and
@@ -156,71 +151,70 @@ images):
 * `sudo bash scripts/fix-perms.sh` re-applies ownership/modes (idempotent, run
   automatically by `deploy.sh` and `new-site.sh`; re-run after `restore.sh`).
 
-## Site import from the Hetzner storage box
+## Remote storage (snapshots, DB dumps)
 
-On a fresh box, real site content is pulled from the Hetzner storage box so the
-sites resolve instead of showing the seeded placeholder. Configure it in `.env`
-(`HETZNER_SYNC_*`), then `scripts/sync-site.sh` (called automatically by every
-`deploy.sh`) rsyncs the snapshot in and keeps it in sync.
+Snapshots of the old `/var/www`, the weekly DB dumps and the Open WebUI data
+live on remote storage (a Hetzner Storage Box by default), described by generic
+`STORAGE_*` vars in `.env`:
 
-**One-time step — authorize the SSH key on the box:**
+* `STORAGE_USER` / `STORAGE_HOST` / `STORAGE_PORT` — the box.
+* `STORAGE_KEY` — the SSH key (`~/.ssh/id_ed25519`, generated by
+  `host-setup.sh`; authorised on the box by `storage-mounts.sh`).
+* `SNAPSHOT_ROOT` — dated snapshot dirs (e.g. `/home/pressabl/2026-09-20`); the
+  newest is used automatically. Pin `SNAPSHOT_DIR` to force a date.
+* `SNAPSHOT_RENAMES` — map a snapshot dir to a different local dir, e.g.
+  `spam-destroyer.com=spam-destroyer.hellyer.kiwi`.
+* `DB_DUMP_DIR` — where the `<db>-<date>.sql.gz` dumps are (the `~/databases`
+  mount).
 
-1. `sudo bash scripts/host-setup.sh` generates `~/.ssh/hetzner_backup` (if
-   missing) and prints the **public** key with instructions.
-2. Install it on the box with Hetzner's built-in command (it asks for the
-   storage box password):
-   ```bash
-   cat ~/.ssh/hetzner_backup.pub | ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key
-   ```
-3. Re-run `sudo bash scripts/sync-site.sh` — or let the next deploy do it.
-   (`sync-site.sh` can also offer to run step 2 for you when it hits an
-   unauthorized key, and retries after.)
-
-> The snapshot is **files only**. Making a site actually run also needs its
-> database imported into the MariaDB container and `.env` pointed at it — see
-> the migration scripts below.
+**One-time key authorisation:** `storage-mounts.sh` installs the key on both
+boxes (asking for each box's password once) with Hetzner's `install-ssh-key`,
+which appends and never replaces existing keys.
 
 ## Migrating all sites (files + databases)
 
-`scripts/provision-site.sh` restores **one** site end-to-end, deriving
-everything from the site's own files (no manifest):
+`scripts/provision-site.sh` restores **one** site from the newest snapshot,
+deriving everything from the site's own files (no manifest). It is **always
+fresh**: files are rsynced with `--delete`, and the database is dropped,
+recreated and re-imported.
 
-1. rsyncs the site's directory from the snapshot (`HETZNER_SNAPSHOT_DIR`) into
-   `~/www/<dir>`;
-2. reads the app's config to find its database — Laravel `.env`
-   (`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD`), WordPress `wp-config.php`, or
-   SQLite (just ensures the file exists);
-3. creates the DB + user + grants and imports the newest
-   `<db>-*.sql.gz` from `DB_DUMP_DIR` — **only if the DB is empty**;
-4. rewrites the app config for the containers (`DB_HOST=mariadb`,
-   `REDIS_HOST=valkey`, `REDIS_PASSWORD=`), clears Laravel caches, fixes
-   permissions and reloads nginx.
+1. syncs `<snapshot>/<dir>/` into `~/www/<local-dir>` (`SNAPSHOT_RENAMES`
+   applies, so `spam-destroyer.com` lands in `spam-destroyer.hellyer.kiwi`);
+2. detects the database from the app — Laravel `.env` (`DB_*`), **Symfony
+   `.env` (`DATABASE_URL`; sqlite → skipped)**, WordPress `wp-config.php`, or
+   sqlite (file only);
+3. creates the DB + its **own user (named after the DB)** with a fresh random
+   password and a least-privilege grant, then imports the newest
+   `<db>-*.sql.gz` (DEFINER clauses are stripped so the old shared user isn't
+   needed);
+4. points the app at the containers (`DB_HOST=mariadb`, `REDIS_HOST=valkey`,
+   `REDIS_PASSWORD=`), clears caches, fixes permissions, reloads nginx.
 
 ```bash
 sudo bash scripts/provision-site.sh cvs.hellyer.kiwi
-sudo bash scripts/provision-site.sh spam-destroyer.com --domain spam-destroyer.com
+sudo bash scripts/provision-site.sh spam-destroyer.com --to spam-destroyer.hellyer.kiwi
 sudo bash scripts/provision-site.sh gpx.hellyer.kiwi --files-only   # SQLite app
 ```
 
-`scripts/migrate-sites.sh` runs it across every site it finds in the snapshot
-(kept: dirs with `public/`, `public_html/`, `.env` or `wp-config.php`):
+`scripts/migrate-sites.sh` runs it across every site found in the newest
+snapshot (dirs with `public/`, `public_html/`, `.env` or `wp-config.php`), and
+`scripts/provision-all.sh` additionally imports the Open WebUI data — this is
+what `deploy.sh` runs on **every** deploy:
 
 ```bash
 sudo bash scripts/migrate-sites.sh --dry-run        # show what it would do
-sudo bash scripts/migrate-sites.sh                  # all sites
-sudo bash scripts/migrate-sites.sh --files-only
-sudo bash scripts/migrate-sites.sh cvs.hellyer.kiwi kartastrophecup.de
+sudo bash scripts/provision-all.sh                  # everything, for real
+sudo bash scripts/migrate-sites.sh --prune-placeholders
 ```
 
-Useful flags: `--files-only`, `--db-only`, `--force` (wipe + re-import the
-dump), `--dry-run`. Re-runs are safe: files are an exact `rsync --delete`
-mirror of the snapshot, and a non-empty database is left untracked unless
-`--force`.
+Flags: `--files-only`, `--db-only`, `--dry-run`, `--prune-placeholders`.
+
+> **Every deploy is destructive to server-side data** (files, DBs and Open WebUI
+> are replaced from the newest snapshot) — this box is a mirror of the backups.
 
 > Only the databases listed in the old `backup.conf` have dumps
 > (`pressabl`, `secure`, `events`, `cvs_hellyer_kiwi`, `spamannihilator`,
-> `kartastrophecup`). Other Laravel apps use SQLite, or will be created empty
-> and migrated with `php artisan migrate`.
+> `kartastrophecup`). Other apps use SQLite, or are created empty and migrated.
 
 ## Open WebUI (`chat.hellyer.kiwi`)
 
@@ -258,7 +252,7 @@ checks/debugging; nginx reaches it by name on the compose network.
   certificate.
 * The real cert is issued by `scripts/certbot-issue.sh`, driven by
   `certbot/domains.txt` — one line = one certificate, `pressabl <all domains>`.
-  Test mode uses `certbot/domains.test.txt` (`pressabl ionos.hellyer.kiwi
+  Test mode uses `certbot/domains.test.txt` (`pressabl
   spam-destroyer.hellyer.kiwi`). Every listed domain must have DNS pointed at
   this host before it can be issued.
 * **HSTS is sent in production only.** In test mode `render-config.sh` drops

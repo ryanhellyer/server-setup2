@@ -2,4 +2,4 @@
 # domains listed below (each needs DNS pointed at this host first). When this
 # box becomes the production server, set CERTBOT_DOMAINS_FILE to
 # certbot/domains.txt (or leave .env unset) to move to the full production list.
-pressabl ionos.hellyer.kiwi spam-destroyer.hellyer.kiwi
+pressabl spam-destroyer.hellyer.kiwi

@@ -52,8 +52,8 @@ EXTRA=()
 # "Certificate not yet due for renewal"), which must NOT abort the script —
 # the nginx reload below has to run regardless. DNS is checked per cert: a
 # cert whose domains don't resolve is skipped (clear message) so one pending
-# domain doesn't block the others (e.g. ionos still issues while a new test
-# subdomain propagates). An IP mismatch is only a warning — certbot is the
+# domain doesn't block the others (e.g. one site still issues while a new
+# test subdomain propagates). An IP mismatch is only a warning — certbot is the
 # real judge, and its error (if any) is shown below.
 PUBLIC_IP="$(curl -fsSL --max-time 10 https://ifconfig.me 2>/dev/null \
   || curl -fsSL --max-time 10 https://icanhazip.com 2>/dev/null || true)"

@@ -38,9 +38,10 @@ echo "==> Pruning backups older than 14 days"
 find "$BACKUP_DIR" -name 'mysql-all-*.sql.gz' -mtime +14 -delete
 find "$BACKUP_DIR" -name 'www-*.tar.gz'       -mtime +14 -delete
 
-if [ -n "${HETZNER_SSH:-}" ]; then
-  echo "==> Offloading to Hetzner: $HETZNER_SSH"
-  rsync -az --delete "$BACKUP_DIR/" "$HETZNER_SSH"
+BACKUP_SSH="${BACKUP_SSH:-${HETZNER_SSH:-}}"
+if [ -n "$BACKUP_SSH" ]; then
+  echo "==> Offloading to remote storage: $BACKUP_SSH"
+  rsync -az --delete "$BACKUP_DIR/" "$BACKUP_SSH"
 fi
 
 echo "Backup complete: $BACKUP_DIR"

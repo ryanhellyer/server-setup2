@@ -87,36 +87,23 @@ if id ryan >/dev/null 2>&1; then
   fi
 fi
 
-# ---- SSH key for the Hetzner storage box (site imports / backups) ----
-# The PUBLIC key must be added to the box once. Hetzner storage boxes install
-# a key with:  cat <key>.pub | ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key
-# (it asks for the storage box password). scripts/sync-site.sh offers to run
-# that for you when the key isn't authorized yet.
+# ---- SSH key for the remote storage (site imports / backups) ----
+# A single standard key (id_ed25519) is used for the storage mounts and the
+# snapshot sync. Its public half must be authorised on the remote once; the
+# storage-mounts step does that for you (it asks for the box password).
 if id ryan >/dev/null 2>&1; then
-  HETZNER_SSH_DIR="/home/ryan/.ssh"
-  HETZNER_KEY_OWNER="ryan:ryan"
+  STORAGE_SSH_DIR="/home/ryan/.ssh"
+  STORAGE_KEY_OWNER="ryan:ryan"
 else
-  HETZNER_SSH_DIR="/root/.ssh"
-  HETZNER_KEY_OWNER="root:root"
+  STORAGE_SSH_DIR="/root/.ssh"
+  STORAGE_KEY_OWNER="root:root"
 fi
-install -d -m 700 -o "$(echo "$HETZNER_KEY_OWNER" | cut -d: -f1)" -g "$(echo "$HETZNER_KEY_OWNER" | cut -d: -f2)" "$HETZNER_SSH_DIR"
-if [ ! -f "$HETZNER_SSH_DIR/hetzner_backup" ]; then
-  echo "==> generating SSH key for the Hetzner storage box"
-  ssh-keygen -q -t ed25519 -N "" -C "server-setup@$(hostname)" -f "$HETZNER_SSH_DIR/hetzner_backup"
-  chown "$HETZNER_KEY_OWNER" "$HETZNER_SSH_DIR/hetzner_backup" "$HETZNER_SSH_DIR/hetzner_backup.pub"
-  echo
-  echo "  ****************************************************************"
-  echo "  * ONE-TIME STEP: install this key on the Hetzner box.         *"
-  echo "  *                                                            *"
-  cat "$HETZNER_SSH_DIR/hetzner_backup.pub"
-  echo "  *                                                            *"
-  echo "  *   cat $HETZNER_SSH_DIR/hetzner_backup.pub | \\"
-  echo "  *     ssh -p 23 u<id>@u<id>.your-storagebox.de install-ssh-key *"
-  echo "  *                                                            *"
-  echo "  * (asks for the storage box password; the next deploy syncs   *"
-  echo "  *  automatically — or re-run scripts/sync-site.sh)            *"
-  echo "  ****************************************************************"
-  echo
+install -d -m 700 -o "$(echo "$STORAGE_KEY_OWNER" | cut -d: -f1)" -g "$(echo "$STORAGE_KEY_OWNER" | cut -d: -f2)" "$STORAGE_SSH_DIR"
+if [ ! -f "$STORAGE_SSH_DIR/id_ed25519" ]; then
+  echo "==> generating storage SSH key: $STORAGE_SSH_DIR/id_ed25519"
+  ssh-keygen -q -t ed25519 -N "" -C "server-setup@$(hostname)" -f "$STORAGE_SSH_DIR/id_ed25519"
+  chown "$STORAGE_KEY_OWNER" "$STORAGE_SSH_DIR/id_ed25519" "$STORAGE_SSH_DIR/id_ed25519.pub"
+  chmod 600 "$STORAGE_SSH_DIR/id_ed25519"; chmod 644 "$STORAGE_SSH_DIR/id_ed25519.pub"
 fi
 
 echo "Host packages installed."

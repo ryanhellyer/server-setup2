@@ -22,8 +22,8 @@
 #   9. podman compose up -d --build.
 #   10. Installs systemd units so the stack starts at boot.
 #
-# After first deploy: sudo ./install/setup.sh (or scripts/test-site.sh and
-# scripts/certbot-issue.sh directly), then point DNS at this host.
+# After first deploy: sudo ./install/setup.sh (or scripts/certbot-issue.sh
+# directly), then point DNS at this host.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -64,12 +64,22 @@ fi
 # ---- 1c. swap: avoid OOM / thrash on small boxes ----
 "$PWD/scripts/ensure-swap.sh"
 
-# ---- 2. .env (create + open for editing) ----
+# ---- 2. .env (create with generated secrets; no editor) ----
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "==> Created .env from .env.example"
-  echo "==> Opening it in ${EDITOR:-nano} — fill in the secrets, then save & exit."
-  "${EDITOR:-nano}" .env
+  # Generate a strong MariaDB root password (don't leave the placeholder).
+  dbpass="$(openssl rand -hex 24)"
+  python3 - .env "$dbpass" <<'PY'
+import sys
+path, val = sys.argv[1], sys.argv[2]
+lines = open(path).read().splitlines()
+for i, ln in enumerate(lines):
+    if ln.startswith("MARIADB_ROOT_PASSWORD="):
+        lines[i] = f"MARIADB_ROOT_PASSWORD={val}"
+open(path, "w").write("\n".join(lines) + "\n")
+PY
+  chmod 600 .env
+  echo "==> Created .env from .env.example (generated MARIADB_ROOT_PASSWORD)"
 fi
 # shellcheck disable=SC1091
 set -a && . ./.env && set +a
@@ -226,14 +236,12 @@ echo "==> bring the stack up (build + start)"
 echo "==> apply web-dir permissions (ryan:www-data)"
 "$PWD/scripts/fix-perms.sh" "$WWW_ROOT"
 
-# ---- 9c. import site snapshot(s) from the Hetzner storage box ----
-# .env-gated (HETZNER_SYNC_SRC empty = skipped). If the SSH key isn't
-# authorized on the box yet, sync-site.sh prints the one-time instructions and
-# (interactively) waits for you to do that, retrying on Enter or skipping with
-# 's'. A hard failure must NOT abort the deploy — print and keep going, like
-# the certbot step below.
-"$PWD/scripts/sync-site.sh" \
-  || echo "==> (site import failed — see above; authorize the key, then re-run: sudo bash scripts/sync-site.sh)"
+# ---- 9c. import every site + database + Open WebUI from the newest snapshot ----
+# Always fresh: files are rsynced with --delete, databases are dropped and
+# re-imported, each with its own user (named after the DB). A hard failure must
+# NOT abort the deploy — print and keep going, like the certbot step below.
+"$PWD/scripts/provision-all.sh" \
+  || echo "==> (provisioning had failures — see above; re-run: sudo bash scripts/provision-all.sh)"
 
 # ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
@@ -241,9 +249,9 @@ echo "==> install systemd units so the stack starts at boot"
 
 # ---- 11. TEST MODE: issue the real TLS cert automatically ----
 # Test mode configures a real Let's Encrypt cert for the domains in
-# CERTBOT_DOMAINS_FILE (ionos.hellyer.kiwi). Requires DNS to be pointed at
-# this host — certbot-issue.sh checks that first and tells you exactly what to
-# do if it isn't. The stack is already up either way.
+# CERTBOT_DOMAINS_FILE. Requires DNS pointed at this host — certbot-issue.sh
+# checks that first and tells you what to do if it isn't. The stack is up
+# either way.
 if [ "$DEPLOY_ENV" = "test" ]; then
   echo "==> issuing the real TLS cert (test mode)"
   if "$PWD/scripts/certbot-issue.sh"; then
@@ -256,5 +264,5 @@ fi
 echo
 echo "Deploy complete."
 echo "Next: sudo ./install/setup.sh   (menu) — or directly:"
-echo "      sudo bash scripts/test-site.sh      (scaffold the ionos test page)"
-echo "      sudo bash scripts/certbot-issue.sh  (real TLS for ionos.hellyer.kiwi)"
+echo "      sudo bash scripts/provision-all.sh  (re-import sites + DBs + Open WebUI)"
+echo "      sudo bash scripts/certbot-issue.sh  (renew TLS certificates)"

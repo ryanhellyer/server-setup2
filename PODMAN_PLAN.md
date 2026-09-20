@@ -1,5 +1,9 @@
 # Podman Migration Plan — hellyer.kiwi server
 
+> **Historical design doc.** The current source of truth is `README.md` and the
+> scripts themselves. Some details below (ionos test site, `sync-site.sh`,
+> Hetzner-specific names) have since changed.
+
 **Goal:** Move ~15 sites (Laravel + WordPress + static + Node) from a bare-metal
 Ubuntu server to a fully containerised stack running under Podman, so the box can
 be rebuilt from scratch in minutes, not days. Nginx remains the only web server /
@@ -391,14 +395,19 @@ Applied **at deploy time** (documented here so you don't forget):
 
 | Script | What it does |
 |---|---|
-| `install/setup.sh` | THE entry point. Fresh host (curl\|bash): installs packages, creates the admin user, downloads the repo as a tarball (public repo — no git/keys), re-execs the installed copy. Installed server: interactive menu (deploy / new site / backup / restore / certs / test site / systemd / CLI tools / status / logs). |
+| `install/setup.sh` | THE entry point. Fresh host (curl\|bash): installs packages, creates the admin user, downloads the repo as a tarball (public repo — no git/keys), authorises the storage key + mounts, runs the first deploy (which imports all sites/DBs/Open WebUI), then presents the menu (deploy / new site / backup / restore / certs / systemd / CLI tools / status / logs). |
 | `scripts/host-setup.sh` | Installs the host package set + the Starship prompt (binary + `config/starship.toml` seeded to `/etc/skel` and the `ryan`/`root` users) + creates bind-mount dirs + ensures swap (called by install/setup.sh and auto by deploy.sh). |
-| `scripts/deploy.sh` | Full deploy: auto-installs podman if missing, opens firewall ports 22/80/443, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), renders nginx config, `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
+| `scripts/deploy.sh` | Full deploy: auto-installs podman if missing, opens firewall ports 22/80/443, creates `.env` with generated secrets, refreshes files (git pull OR tarball re-download), renders nginx config, `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
 | `scripts/backup.sh` | Dumps all DBs, archives the web root (`~/www`), prunes 14 days, rsyncs to Hetzner. |
 | `scripts/restore.sh` | Restores the latest DB dump + the web root archive from `/var/databases` (no-op if none exist yet). |
 | `scripts/certbot-issue.sh` | Checks DNS is pointed at this host (clear error if not), then issues/renews certs from `CERTBOT_DOMAINS_FILE` (test = `domains.test.txt`) via the webroot challenge; links the cert into the path nginx serves. |
-| `scripts/test-site.sh` | Scaffolds the ionos.hellyer.kiwi diagnostics page into the web root (`~/www`) and reloads nginx. |
+| `scripts/lib-storage.sh` / `lib-db.sh` / `lib-env.sh` | Shared helpers: generic storage config + snapshot discovery/rename, MariaDB provisioning (per-site users) and KEY=value edits. |
+| `scripts/provision-site.sh` | Restores one site (files + DB) from the newest snapshot, always fresh; detects Laravel/Symfony/WordPress/SQLite; gives each DB its own user + password. |
+| `scripts/migrate-sites.sh` | Runs provision-site across every site found in the newest snapshot. |
+| `scripts/provision-all.sh` | `migrate-sites --all --prune-placeholders` + `provision-openwebui` — run by deploy.sh on every deploy. |
+| `scripts/provision-openwebui.sh` | Restores the Open WebUI (chat.hellyer.kiwi) data and starts its container. |
+| `scripts/storage-mounts.sh` | Authorises the storage key on both boxes + mounts `gmail`/`databases`. |
 | `scripts/install-cli.sh` | Installs host-side CLI wrappers (see below). |
 | `scripts/install-systemd.sh` | Generates + enables `container-*.service` units so the stack auto-starts at boot (called by deploy.sh). |
 

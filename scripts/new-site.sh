@@ -16,8 +16,8 @@
 # What it does:
 #   1. Adds the domain to the right map + server_name list in conf.d/.
 #   2. Creates the web root + log dirs under the host web root (~/www).
-#   3. For laravel/wordpress: generates a DB + least-privilege user
-#      (maria/init/<domain>.sql) and stores the password in .env.
+#   3. For laravel/wordpress: creates the DB + least-privilege user
+#      (user = DB name) and stores the password in .env.
 #   4. Runs nginx -t and reloads nginx.
 # =============================================================================
 set -euo pipefail
@@ -25,6 +25,7 @@ cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && source .env && set +a
 source scripts/lib-containers.sh
 source scripts/lib-paths.sh
+source scripts/lib-db.sh
 WWW_ROOT="$(resolve_www_root)"
 
 usage() {
@@ -139,15 +140,18 @@ fi
 # ---- 3. Database for laravel / wordpress ----
 if [ "$TYPE" = "laravel" ] || [ "$TYPE" = "wordpress" ]; then
   [ -f .env ] || cp .env.example .env
-  DB_USER="$DOMAIN"
+  # DB + user are the same, derived from the domain (dots/dashes -> underscores).
+  DB_NAME="$(printf '%s' "$DOMAIN" | tr '.-' '__')"
+  DB_USER="$DB_NAME"
   DB_PASS="$(openssl rand -hex 16)"
   DB_KEY="SITE_DB_PASSWORD_$(echo "$DOMAIN" | tr '[:lower:].-' '[:upper:]___')"
-  # Store the password in .env (idempotent).
-  if ! grep -q "^$DB_KEY=" .env; then
-    printf '%s=%s\n' "$DB_KEY" "$DB_PASS" >> .env
+  grep -q "^$DB_KEY=" .env || printf '%s=%s\n' "$DB_KEY" "$DB_PASS" >> .env
+  if db_running; then
+    db_provision "$DB_NAME" "$DB_USER" "$DB_PASS"
+    echo "  -> created database '$DB_NAME' + user '$DB_USER' (password saved in .env as $DB_KEY)"
+  else
+    echo "  !! mariadb not running — database not created; re-run after the stack is up."
   fi
-  sed "s/<domain>/$DOMAIN/g; s/<password>/$DB_PASS/g" maria/init/example.sql > "maria/init/$DOMAIN.sql"
-  echo "  -> wrote maria/init/$DOMAIN.sql (password saved in .env as $DB_KEY)"
 fi
 
 # ---- 4. Validate + reload ----
