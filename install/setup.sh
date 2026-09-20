@@ -37,19 +37,6 @@ ok()  { printf '\033[1;32m[ok]\033[0m %s\n' "$*"; }
 # Read from /dev/tty so prompts work even when piped in via curl | bash.
 tty_read() { read -r "$1" < /dev/tty || true; }
 
-ask_yn() { # "$1" prompt; returns 0 on yes, 1 on no (default: yes)
-  local ans
-  if [ -e /dev/tty ]; then
-    read -r -p "$1 [Y/n] " ans < /dev/tty
-  else
-    read -r -p "$1 [Y/n] " ans
-  fi
-  case "${ans,,}" in
-    n|no) return 1 ;;
-    *)    return 0 ;;
-  esac
-}
-
 # ---- locate the repo: the parent of this script's dir, else the install dir ----
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 if [ ! -x "$REPO_DIR/scripts/deploy.sh" ] && [ -x /opt/server-setup/scripts/deploy.sh ]; then
