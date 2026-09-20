@@ -208,7 +208,10 @@ echo "==> build nginx image (used for config validation)"
 IMAGE_ID="$(podman build -q ./nginx)"
 
 echo "==> nginx -t against the repo config"
+# --add-host: the config references upstreams by container name (open-webui),
+# which resolve on the compose network but not in this throwaway container.
 podman run --rm \
+  --add-host open-webui:127.0.0.1 \
   -v "$PWD/nginx:/etc/nginx:ro" \
   -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" \
   -v "$WWW_ROOT:/var/www" \

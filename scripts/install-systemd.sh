@@ -49,8 +49,8 @@ OVERRIDE="$SYSTEMD_DIR/container-$CONTAINER_NGINX.service.d/order.conf"
 mkdir -p "$(dirname "$OVERRIDE")"
 cat > "$OVERRIDE" <<EOF
 [Unit]
-After=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service
-Wants=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service
+After=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service container-$CONTAINER_OPENWEBUI.service
+Wants=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service container-$CONTAINER_OPENWEBUI.service
 EOF
 
 systemctl daemon-reload

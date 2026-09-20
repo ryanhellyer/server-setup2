@@ -16,14 +16,16 @@ CONTAINER_PHP_FPM="php-fpm"
 CONTAINER_MARIADB="mariadb"
 CONTAINER_VALKEY="valkey"
 CONTAINER_NODE="node"
+CONTAINER_OPENWEBUI="open-webui"
 
-# Ordered container inventory (nginx last: it depends on php-fpm/node sockets).
+# Ordered container inventory (nginx last: it depends on php-fpm/node/open-webui).
 ALL_CONTAINERS=(
   "$CONTAINER_NGINX"
   "$CONTAINER_PHP_FPM"
   "$CONTAINER_MARIADB"
   "$CONTAINER_VALKEY"
   "$CONTAINER_NODE"
+  "$CONTAINER_OPENWEBUI"
 )
 
 # ---- host-CLI command -> container (drives bin/pod-exec + install-cli.sh) ----

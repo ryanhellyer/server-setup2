@@ -222,6 +222,32 @@ mirror of the snapshot, and a non-empty database is left untracked unless
 > `kartastrophecup`). Other Laravel apps use SQLite, or will be created empty
 > and migrated with `php artisan migrate`.
 
+## Open WebUI (`chat.hellyer.kiwi`)
+
+`chat.hellyer.kiwi` is served by **Open WebUI** — its own container, not a PHP
+site. It's part of `compose.yaml` (service `open-webui`, data at
+`~/www/chat.hellyer.kiwi:/app/backend/data`), and nginx proxies to it over the
+`web` network (`nginx/conf.d/node-proxy.conf` → upstream `open-webui:8080`,
+with WebSocket + long-timeout settings).
+
+Restore/refresh its data from the storage box (newest dated snapshot):
+
+```bash
+sudo bash scripts/provision-openwebui.sh
+sudo bash scripts/provision-openwebui.sh --drop-vector-db   # force ChromaDB rebuild
+sudo bash scripts/provision-openwebui.sh --dry-run
+```
+
+It rsyncs `webui.db` + `uploads/` (skipping the transient `webui.db-wal`/`-shm`,
+`cache/`, and the old `install.sh`/tooling), reads `OPENROUTER_API_KEY` from the
+snapshot's `install.sh` into `.env` (never printed/committed), brings up the
+`open-webui` service, waits for `/api/version`, and reloads nginx.
+
+Notes: `vector_db/` is kept by default because the container path
+(`/app/backend/data`) is stable; use `--drop-vector-db` if RAG/embeddings
+misbehave. The container is localhost-published on `127.0.0.1:3000` for health
+checks/debugging; nginx reaches it by name on the compose network.
+
 ## TLS certificates
 
 * Every server block serves the same **`pressabl`** certificate

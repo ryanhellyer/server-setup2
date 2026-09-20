@@ -28,6 +28,7 @@ services:
     depends_on:
       - php
       - node
+      - open-webui
     networks: [web]
     restart: unless-stopped
 
@@ -48,6 +49,22 @@ services:
     container_name: node
     volumes:
       - ${WWW_ROOT:-/home/ryan/www}:/var/www
+    networks: [web]
+    restart: unless-stopped
+
+  # Open WebUI (chat.hellyer.kiwi) — its own container, proxied by nginx.
+  # The host data dir IS the container's /app/backend/data (SQLite + uploads).
+  # scripts/provision-openwebui.sh restores it from the Hetzner snapshot.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    environment:
+      WEBUI_URL: ${OPENWEBUI_URL:-https://chat.hellyer.kiwi}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - ${WWW_ROOT:-/home/ryan/www}/chat.hellyer.kiwi:/app/backend/data
+    ports:
+      - "127.0.0.1:3000:8080"   # localhost only; nginx proxies via the web network
     networks: [web]
     restart: unless-stopped
 

@@ -67,7 +67,8 @@ http {
 	# Change the PHP version / socket HERE and every vhost follows.
 	##
 	upstream php-fpm { server unix:/run/php/php8.5-fpm.sock; }
-	upstream node-app { server 127.0.0.1:3000; }
+	# chat.hellyer.kiwi is served by Open WebUI (its own container).
+	upstream open-webui { server open-webui:8080; }
 
 	##
 	# Maps — cache control & platform detection.
