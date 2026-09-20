@@ -7,7 +7,7 @@
 #
 # Used by BOTH:
 #   - bootstrap.sh  (piped over SSH onto a bare box, before the repo exists)
-#   - setup.sh      (fresh-host path, after the repo is downloaded)
+#   - install/setup.sh  (fresh-host path, after the repo is downloaded)
 #
 # Design: the box is intended to become key-only (see harden-sshd.sh), so the
 # account gets NO password and sudo via a NOPASSWD sudoers drop-in. Safe to

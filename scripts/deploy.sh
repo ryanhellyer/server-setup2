@@ -2,7 +2,7 @@
 # =============================================================================
 # deploy.sh — bring the whole stack up / update it in one command.
 #
-# The day-to-day entry point is ./setup.sh (interactive menu); this script is
+# The day-to-day entry point is ./install/setup.sh (interactive menu); this script is
 # the automation-friendly path it delegates to, and it can be run directly:
 #   sudo bash scripts/deploy.sh
 #
@@ -22,7 +22,7 @@
 #   9. podman compose up -d --build.
 #   10. Installs systemd units so the stack starts at boot.
 #
-# After first deploy: sudo ./setup.sh (or scripts/test-site.sh and
+# After first deploy: sudo ./install/setup.sh (or scripts/test-site.sh and
 # scripts/certbot-issue.sh directly), then point DNS at this host.
 # =============================================================================
 set -euo pipefail
@@ -33,7 +33,7 @@ source scripts/lib-paths.sh
 
 # Safety: deploy.sh installs on the machine it RUNS on, never remotely. If this
 # isn't an Ubuntu + systemd host you're likely on the wrong machine (e.g. a
-# laptop). setup.sh does the same check before its menu.
+# laptop). install/setup.sh does the same check before its menu.
 if [ "${SETUP_ALLOW_UNSUPPORTED:-0}" != "1" ]; then
   if ! command -v apt-get >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
     echo "!! This host does not look like the target Ubuntu server (needs apt-get + systemd)."
@@ -99,7 +99,7 @@ if [ -f .tarball ]; then
   if [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/refs/heads/([^/]+)\.tar\.gz$ ]]; then
     owner="${BASH_REMATCH[1]}"; repo="${BASH_REMATCH[2]}"; branch="${BASH_REMATCH[3]}"
   elif [[ "$TARBALL_URL" =~ ^https://github.com/([^/]+)/([^/]+)/archive/ ]]; then
-    # Old installs wrote the resolved SHA URL to .tarball (see setup.sh), which
+    # Old installs wrote the resolved SHA URL to .tarball (see install/setup.sh), which
     # the refs/heads regex can't parse — so every deploy re-downloaded the same
     # pinned SHA forever. Self-heal: ask the API for the repo's default branch
     # and rewrite .tarball to the branch form.
@@ -246,12 +246,12 @@ if [ "$DEPLOY_ENV" = "test" ]; then
   if "$PWD/scripts/certbot-issue.sh"; then
     echo "==> real TLS cert issued for the test domain"
   else
-    echo "==> (cert not issued — see the message above; point DNS, then re-run: sudo ./setup.sh)"
+    echo "==> (cert not issued — see the message above; point DNS, then re-run: sudo ./install/setup.sh)"
   fi
 fi
 
 echo
 echo "Deploy complete."
-echo "Next: sudo ./setup.sh   (menu) — or directly:"
+echo "Next: sudo ./install/setup.sh   (menu) — or directly:"
 echo "      sudo bash scripts/test-site.sh      (scaffold the ionos test page)"
 echo "      sudo bash scripts/certbot-issue.sh  (real TLS for ionos.hellyer.kiwi)"

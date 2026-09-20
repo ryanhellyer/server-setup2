@@ -44,7 +44,7 @@ ADMIN_USER="ryan"
 IDENTITY=""
 DO_INSTALL=0
 DO_HARDEN=1
-SETUP_URL="https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/setup.sh"
+SETUP_URL="https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install/setup.sh"
 INSTALL_DIR="/opt/server-setup"
 
 while [ $# -gt 0 ]; do
@@ -190,11 +190,11 @@ if [ "$DO_INSTALL" -eq 1 ] || ! run_ssh "$TARGET" "test -x $INSTALL_DIR/scripts/
   if run_ssh "$TARGET" 'command -v curl >/dev/null 2>&1'; then
     run_ssh_t "$TARGET" "curl -fsSL '$SETUP_URL' -o /tmp/setup.sh && ${SUDO}bash /tmp/setup.sh"
   else
-    warn "curl not found on the server — copying setup.sh over instead."
-    scp "${SCP_OPTS[@]}" "$REPO_DIR/setup.sh" "$TARGET:/tmp/setup.sh"
+    warn "curl not found on the server — copying install/setup.sh over instead."
+    scp "${SCP_OPTS[@]}" "$REPO_DIR/install/setup.sh" "$TARGET:/tmp/setup.sh"
     run_ssh_t "$TARGET" "${SUDO}bash /tmp/setup.sh"
   fi
 else
   say "Opening the server-setup menu on $HOST"
-  run_ssh_t "$TARGET" "cd $INSTALL_DIR && ${SUDO}bash setup.sh"
+  run_ssh_t "$TARGET" "cd $INSTALL_DIR && ${SUDO}bash install/setup.sh"
 fi

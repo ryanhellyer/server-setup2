@@ -4,7 +4,7 @@
 #
 # Single-line usage on a bare Ubuntu host (no docs, no keys, no git):
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/setup.sh \
+#   curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install/setup.sh \
 #     -o /tmp/setup.sh && sudo bash /tmp/setup.sh
 #
 # Two modes, auto-detected:
@@ -19,9 +19,9 @@
 #          the caller's key when run via bootstrap.sh.
 #       4. Re-execs the installed copy, which presents the menu.
 #
-#   * INSTALLED SERVER (repo found next to this script, or in /opt/server-setup):
-#       Presents an interactive menu; each option delegates to a script in
-#       scripts/ (sudo added only where the target needs root).
+#   * INSTALLED SERVER (repo found in the parent of this script's dir, or in
+#     /opt/server-setup): Presents an interactive menu; each option delegates to
+#     a script in scripts/ (sudo added only where the target needs root).
 #
 # Menu options delegate to existing scripts, so the automation path is unchanged:
 #   sudo bash scripts/deploy.sh        # full deploy (cron/automation friendly)
@@ -50,8 +50,8 @@ ask_yn() { # "$1" prompt; returns 0 on yes, 1 on no (default: yes)
   esac
 }
 
-# ---- locate the repo: this script's dir, else the canonical install dir ----
-REPO_DIR="$SCRIPT_DIR"
+# ---- locate the repo: the parent of this script's dir, else the install dir ----
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 if [ ! -x "$REPO_DIR/scripts/deploy.sh" ] && [ -x /opt/server-setup/scripts/deploy.sh ]; then
   REPO_DIR="/opt/server-setup"
 fi
@@ -113,7 +113,7 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   chmod 600 "$REPO_DIR/.tarball"
   [ -n "$sha" ] && printf '%s\n' "$sha" > "$REPO_DIR/.last-sha"
 
-  [ -f "$REPO_DIR/setup.sh" ] || { echo "Download failed — no setup.sh found in the tarball."; exit 1; }
+  [ -f "$REPO_DIR/install/setup.sh" ] || { echo "Download failed — no install/setup.sh found in the tarball."; exit 1; }
   ok "Files installed at $REPO_DIR"
 
   # Transition guard: this is a tarball install — drop any stale .git left by an
@@ -151,7 +151,7 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
 
   say "Re-running the installed copy to present the menu."
   cd "$REPO_DIR"
-  exec bash "$REPO_DIR/setup.sh"
+  exec bash "$REPO_DIR/install/setup.sh"
 fi
 
 # =============================================================================

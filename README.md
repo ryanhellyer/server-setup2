@@ -11,7 +11,7 @@ That's the one manual step (it lives in your DNS provider) — everything below 
 automatic.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/setup.sh \
+curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install/setup.sh \
   -o /tmp/setup.sh && sudo bash /tmp/setup.sh
 ```
 
@@ -31,16 +31,16 @@ That one command:
    schedules the **nightly backup** and **TLS renewal** (systemd timers, no
    cron needed), and **issues the real TLS cert for `ionos.hellyer.kiwi`
    automatically** (it checks DNS first — if DNS isn't propagated yet, it tells
-   you exactly what to do and you just re-run `sudo ./setup.sh`).
+   you exactly what to do and you just re-run `sudo ./install/setup.sh`).
 
 No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
 finishes.
 
-> **Where does each script run?** `setup.sh` (and `deploy.sh`) install on the
+> **Where does each script run?** `install/setup.sh` (and `deploy.sh`) install on the
 > machine they are **executed on** — they do not touch anything remote. Run
-> `setup.sh` **on the server**. To install a *remote* server from your laptop,
+> `install/setup.sh` **on the server**. To install a *remote* server from your laptop,
 > use `bootstrap.sh` below. (Both refuse to run on a host without `apt-get` +
-> `systemd`, so a stray `setup.sh` on your laptop won't install anything.)
+> `systemd`, so a stray `install/setup.sh` on your laptop won't install anything.)
 
 ## Install / manage a remote server from your laptop
 
@@ -71,9 +71,9 @@ Flags: `--user`, `--admin-user`, `--port`, `--identity`, `--install`,
 > Changed your mind? `sudo bash scripts/harden-sshd.sh --revert` restores
 > password authentication.
 
-## Everything else: `sudo ./setup.sh`
+## Everything else: `sudo ./install/setup.sh`
 
-`setup.sh` is the one script to remember. On the server it shows an interactive
+`install/setup.sh` is the one script to remember. On the server it shows an interactive
 menu that delegates to the scripts in `scripts/`:
 
 - **1)** full deploy / update the stack
@@ -98,7 +98,7 @@ curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/maste
   tar -xz --strip-components=1 -C /opt/server-setup
 cd /opt/server-setup
 cp .env.example .env && nano .env      # scripts/deploy.sh does this for you automatically
-sudo ./setup.sh                        # menu: pick "Full install / deploy / update"
+sudo ./install/setup.sh                 # menu: pick "Full install / deploy / update"
 ```
 
 > **Config templates:** `nginx/nginx.conf`, `php/fpm-www.conf` and `maria/my.cnf`
@@ -111,7 +111,7 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 
 | Thing | Command |
 |---|---|
-| Everything (menu: deploy, add a site, backup, restore, certs...) | `sudo ./setup.sh` |
+| Everything (menu: deploy, add a site, backup, restore, certs...) | `sudo ./install/setup.sh` |
 | Deploy / update the stack (no menu) | `sudo bash scripts/deploy.sh` (refreshes files from the tarball, keeps `.env`) |
 | Add a site (no menu) | `sudo bash scripts/new-site.sh <domain> <type>` |
 | Back up | `sudo bash scripts/backup.sh` |
