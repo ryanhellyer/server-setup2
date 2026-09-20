@@ -69,9 +69,9 @@ services:
   valkey:
     image: docker.io/valkey/valkey:8-alpine
     container_name: valkey
-    command: ["valkey-server", "/etc/valkey/valkey.conf", "--maxmemory", "${VALKEY_MAXMEMORY:-${REDIS_MAXMEMORY:-64mb}}"]
+    command: ["valkey-server", "/etc/valkey/valkey.conf", "--maxmemory", "${VALKEY_MAXMEMORY:-64mb}"]
     environment:
-      VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-${REDIS_MAXMEMORY:-64mb}}
+      VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-64mb}
     volumes:
       - ./valkey/valkey.conf:/etc/valkey/valkey.conf:ro
     networks:

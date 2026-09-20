@@ -119,6 +119,8 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
 | Import/re-sync a site from the Hetzner storage box | `sudo bash scripts/sync-site.sh` (auto-run by `deploy.sh`) |
+| Restore one site fully (files + DB) | `sudo bash scripts/provision-site.sh <site-dir>` |
+| Restore every site found in the snapshot | `sudo bash scripts/migrate-sites.sh [--dry-run]` |
 | Set up Hetzner Storage Box access (both boxes) + mount `gmail`, `databases` | `sudo bash scripts/hetzner-mounts.sh` |
 | Create/refresh the admin user (`ryan`) with a key + passwordless sudo | `sudo bash scripts/create-admin-user.sh` |
 | Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
@@ -175,7 +177,50 @@ sites resolve instead of showing the seeded placeholder. Configure it in `.env`
    unauthorized key, and retries after.)
 
 > The snapshot is **files only**. Making a site actually run also needs its
-> database imported into the MariaDB container and `.env` pointed at it.
+> database imported into the MariaDB container and `.env` pointed at it — see
+> the migration scripts below.
+
+## Migrating all sites (files + databases)
+
+`scripts/provision-site.sh` restores **one** site end-to-end, deriving
+everything from the site's own files (no manifest):
+
+1. rsyncs the site's directory from the snapshot (`HETZNER_SNAPSHOT_DIR`) into
+   `~/www/<dir>`;
+2. reads the app's config to find its database — Laravel `.env`
+   (`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD`), WordPress `wp-config.php`, or
+   SQLite (just ensures the file exists);
+3. creates the DB + user + grants and imports the newest
+   `<db>-*.sql.gz` from `DB_DUMP_DIR` — **only if the DB is empty**;
+4. rewrites the app config for the containers (`DB_HOST=mariadb`,
+   `REDIS_HOST=valkey`, `REDIS_PASSWORD=`), clears Laravel caches, fixes
+   permissions and reloads nginx.
+
+```bash
+sudo bash scripts/provision-site.sh cvs.hellyer.kiwi
+sudo bash scripts/provision-site.sh spam-destroyer.com --domain spam-destroyer.com
+sudo bash scripts/provision-site.sh gpx.hellyer.kiwi --files-only   # SQLite app
+```
+
+`scripts/migrate-sites.sh` runs it across every site it finds in the snapshot
+(kept: dirs with `public/`, `public_html/`, `.env` or `wp-config.php`):
+
+```bash
+sudo bash scripts/migrate-sites.sh --dry-run        # show what it would do
+sudo bash scripts/migrate-sites.sh                  # all sites
+sudo bash scripts/migrate-sites.sh --files-only
+sudo bash scripts/migrate-sites.sh cvs.hellyer.kiwi kartastrophecup.de
+```
+
+Useful flags: `--files-only`, `--db-only`, `--force` (wipe + re-import the
+dump), `--dry-run`. Re-runs are safe: files are an exact `rsync --delete`
+mirror of the snapshot, and a non-empty database is left untracked unless
+`--force`.
+
+> Only the databases listed in the old `backup.conf` have dumps
+> (`pressabl`, `secure`, `events`, `cvs_hellyer_kiwi`, `spamannihilator`,
+> `kartastrophecup`). Other Laravel apps use SQLite, or will be created empty
+> and migrated with `php artisan migrate`.
 
 ## TLS certificates
 
