@@ -11,7 +11,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
+source scripts/lib-paths.sh
 [ -f .env ] && set -a && source .env && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 BACKUP_DIR="${BACKUP_DIR:-/var/databases}"
 DB_DUMP="$(ls -1t "$BACKUP_DIR"/mysql-all-*.sql.gz 2>/dev/null | head -1 || true)"
@@ -30,7 +32,7 @@ if [ -n "$DB_DUMP" ]; then
 fi
 
 if [ -n "$WWW_ARCHIVE" ]; then
-  echo "==> Restoring /var/www from: $WWW_ARCHIVE"
+  echo "==> Restoring site files under $WWW_ROOT from: $WWW_ARCHIVE"
   tar xzf "$WWW_ARCHIVE" -C /
 fi
 

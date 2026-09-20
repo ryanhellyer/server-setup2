@@ -26,9 +26,9 @@
 # Invoked directly as `pod-exec` it runs an arbitrary command in any container:
 #   pod-exec php-fpm php -m
 #
-# Note: the host cwd is mirrored into the container when you are under
-# /var/www (paths match inside the container). PHP tooling runs as www-data so
-# file ownership stays consistent with what nginx/php-fpm expect.
+# Note: the host cwd is mirrored into the container when you are under the host
+# web root (~/www, mapped to /var/www inside the container). PHP tooling runs as
+# www-data so file ownership stays consistent with what nginx/php-fpm expect.
 # =============================================================================
 set -euo pipefail
 
@@ -36,6 +36,9 @@ NAME="$(basename "$0")"
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
 source "$REPO_DIR/scripts/lib-containers.sh"
+source "$REPO_DIR/scripts/lib-paths.sh"
+[ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 # ---- command -> container (resolved from lib-containers.sh) ----
 if [ "$NAME" = "pod-exec" ]; then
@@ -66,10 +69,12 @@ if [ "$NAME" = "nginx-restart" ]; then
   exec podman restart "$CONTAINER_NGINX"
 fi
 
-# ---- mirror the host cwd into the container when under /var/www ----
+# ---- mirror the host cwd into the container when under the web root ----
+# Site files live at $WWW_ROOT (~/www) on the host but /var/www in the
+# containers, so translate the prefix before passing -w.
 EXEC_OPTS=()
-if [[ "$PWD" == /var/www/* ]]; then
-  EXEC_OPTS+=(-w "$PWD")
+if [[ "$PWD" == "$WWW_ROOT" || "$PWD" == "$WWW_ROOT"/* ]]; then
+  EXEC_OPTS+=(-w "${CONTAINER_WWW}${PWD#"$WWW_ROOT"}")
 fi
 
 # ---- TTY handling (interactive terminal vs piped/scripted use) ----

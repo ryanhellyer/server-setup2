@@ -99,7 +99,7 @@ server-setup/
 |   |-- deploy.sh                 # full deploy: .env + refresh + render + nginx -t + compose up
 |   |-- new-site.sh               # scaffold a site into the joined blocks
 |   |-- backup.sh                 # dump DBs + archive site dirs to Hetzner
-|   |-- restore.sh                # restore DBs + /var/www from the latest backup
+|   |-- restore.sh                # restore DBs + the web root (~/www) from the latest backup
 |   |-- certbot-issue.sh          # issue/renew certs (env-driven cert list)
 |   |-- install-cli.sh            # symlink host CLI wrappers into ~/.local/bin
 |   |-- install-systemd.sh        # systemd units so the stack starts at boot
@@ -187,7 +187,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 *   OPcache enabled (128M, 10000 slots, JIT 1255/64M) via `10-opcache.ini`.
 *   `cgi.fix_pathinfo = 0`, `expose_php = Off` via `20-fpm-security.ini`.
-*   Site files mounted from the host `/var/www`.
+*   Site files mounted from the host's `~/www` (mounted at `/var/www` in the containers).
 *   FPM listens on `/run/php/php8.5-fpm.sock`, shared with the Nginx container
     through the `php-socket` volume.
 
@@ -250,7 +250,7 @@ container), then bind-mount into the containers. SSHFS in a container is fragile
 
 ## 8. Migration of the sites
 
-1.  Copy site files to the host layout `/var/www/<domain>` (rsync from the old
+1.  Copy site files to the host layout `~/www/<domain>` (rsync from the old
     box as you already do).
 2.  Dump each MariaDB/WordPress DB, load it into the container.
 3.  Run `scripts/new-site.sh <domain> <type>` for each site. It adds the domain
@@ -395,10 +395,10 @@ Applied **at deploy time** (documented here so you don't forget):
 | `scripts/host-setup.sh` | Installs the host package set + the Starship prompt (binary + `config/starship.toml` seeded to `/etc/skel` and the `ryan`/`root` users) + creates bind-mount dirs + ensures swap (called by setup.sh and auto by deploy.sh). |
 | `scripts/deploy.sh` | Full deploy: auto-installs podman if missing, opens firewall ports 22/80/443, creates + opens `.env` in nano, refreshes files (git pull OR tarball re-download), renders nginx config, `nginx -t`, `compose up -d --build`, systemd units, and in test mode auto-issues the real cert. |
 | `scripts/new-site.sh` | Adds a domain to the right joined block (map + `server_name`), creates web root/logs, generates DB + user + `.env` password (Laravel/WP), validates + reloads nginx. |
-| `scripts/backup.sh` | Dumps all DBs, archives `/var/www`, prunes 14 days, rsyncs to Hetzner. |
-| `scripts/restore.sh` | Restores the latest DB dump + `/var/www` archive from `/var/databases` (no-op if none exist yet). |
+| `scripts/backup.sh` | Dumps all DBs, archives the web root (`~/www`), prunes 14 days, rsyncs to Hetzner. |
+| `scripts/restore.sh` | Restores the latest DB dump + the web root archive from `/var/databases` (no-op if none exist yet). |
 | `scripts/certbot-issue.sh` | Checks DNS is pointed at this host (clear error if not), then issues/renews certs from `CERTBOT_DOMAINS_FILE` (test = `domains.test.txt`) via the webroot challenge; links the cert into the path nginx serves. |
-| `scripts/test-site.sh` | Scaffolds the ionos.hellyer.kiwi diagnostics page into `/var/www` and reloads nginx. |
+| `scripts/test-site.sh` | Scaffolds the ionos.hellyer.kiwi diagnostics page into the web root (`~/www`) and reloads nginx. |
 | `scripts/install-cli.sh` | Installs host-side CLI wrappers (see below). |
 | `scripts/install-systemd.sh` | Generates + enables `container-*.service` units so the stack auto-starts at boot (called by deploy.sh). |
 
@@ -417,7 +417,7 @@ Then, from the host (as root):
 
 | Command | Runs inside | Notes |
 |---|---|---|
-| `php`, `composer` | php-fpm | as `www-data`; cwd mirrored when you're under `/var/www` |
+| `php`, `composer` | php-fpm | as `www-data`; cwd mirrored when you're under `~/www` (mapped to `/var/www`) |
 | `artisan <cmd>` | php-fpm | `php artisan …` in the current site dir |
 | `wp <cmd>` | php-fpm | WP-CLI (now in the PHP image) |
 | `ffmpeg`, `ffprobe` | php-fpm | |
@@ -436,7 +436,7 @@ Example session:
 
 ```bash
 sudo -i
-cd /var/www/some-site && composer install && artisan migrate
+cd ~/www/some-site && composer install && artisan migrate
 wp --path=/var/www/pressabl/public_html core version
 mysqldump pressabl | gzip > /var/databases/pressabl.sql.gz
 ffmpeg -i video.mov video.webm

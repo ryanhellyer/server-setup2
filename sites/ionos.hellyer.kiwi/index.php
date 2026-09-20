@@ -1,7 +1,8 @@
 <?php
 /**
  * Test diagnostics page for the containerised stack.
- * Copied to /var/www/ionos.hellyer.kiwi/public/ by scripts/test-site.sh.
+ * Copied into the host web root (~/www/ionos.hellyer.kiwi/public/) by
+ * scripts/test-site.sh.
  * Remove for production.
  */
 header('Content-Type: text/html; charset=utf-8');

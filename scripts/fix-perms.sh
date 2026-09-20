@@ -2,10 +2,10 @@
 # =============================================================================
 # fix-perms.sh — apply the shared-hosting permission model to the web roots.
 #
-#   sudo ./scripts/fix-perms.sh [path]      (default: /var/www)
+#   sudo ./scripts/fix-perms.sh [path]      (default: the host web root, ~/www)
 #
 # Model (host and container www-data are both uid/gid 33 on Ubuntu, so group
-# permissions line up across the /var/www bind mount):
+# permissions line up across the ~/www -> /var/www bind mount):
 #   * owner ryan, group www-data
 #   * dirs  2775 (rwxrwxr-x + setgid) -> new dirs/files inherit www-data
 #   * files 664  (rw-rw-r--)           -> editable by ryan AND the containers
@@ -15,10 +15,14 @@
 # recreate root-owned files.
 # =============================================================================
 set -euo pipefail
+cd "$(dirname "$0")/.."
+[ -f .env ] && set -a && source .env && set +a
+source scripts/lib-paths.sh
+WWW_ROOT="$(resolve_www_root)"
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo ./scripts/fix-perms.sh)."; exit 1; }
 
-TARGET="${1:-/var/www}"
+TARGET="${1:-$WWW_ROOT}"
 [ -d "$TARGET" ] || { echo "No such directory: $TARGET"; exit 1; }
 
 OWNER="ryan"

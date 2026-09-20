@@ -15,14 +15,17 @@
 #
 # What it does:
 #   1. Adds the domain to the right map + server_name list in conf.d/.
-#   2. Creates the web root + log dirs under /var/www.
+#   2. Creates the web root + log dirs under the host web root (~/www).
 #   3. For laravel/wordpress: generates a DB + least-privilege user
 #      (maria/init/<domain>.sql) and stores the password in .env.
 #   4. Runs nginx -t and reloads nginx.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+[ -f .env ] && set -a && source .env && set +a
 source scripts/lib-containers.sh
+source scripts/lib-paths.sh
+WWW_ROOT="$(resolve_www_root)"
 
 usage() {
   echo "Usage: $0 <domain> <type> [target]"
@@ -121,16 +124,16 @@ with open(filepath, "w") as fh:
 print("  -> edited %s" % filepath)
 PY
 
-# ---- 2. Create web root + logs ----
+# ---- 2. Create web root + logs (host path; config keeps the /var/www path) ----
 case "$TYPE" in
-  laravel|static)   ROOT="/var/www/$DOMAIN/public" ;;
-  static-spa)       ROOT="/var/www/$DOMAIN/public_html" ;;
+  laravel|static)   ROOT="$WWW_ROOT/$DOMAIN/public" ;;
+  static-spa)       ROOT="$WWW_ROOT/$DOMAIN/public_html" ;;
   *)                ROOT="" ;;
 esac
 if [ -n "$ROOT" ]; then
-  mkdir -p "$ROOT" "/var/www/$DOMAIN/logs"
-  echo "  -> created $ROOT and /var/www/$DOMAIN/logs"
-  "$PWD/scripts/fix-perms.sh" "/var/www/$DOMAIN"
+  mkdir -p "$ROOT" "$WWW_ROOT/$DOMAIN/logs"
+  echo "  -> created $ROOT and $WWW_ROOT/$DOMAIN/logs"
+  "$PWD/scripts/fix-perms.sh" "$WWW_ROOT/$DOMAIN"
 fi
 
 # ---- 3. Database for laravel / wordpress ----

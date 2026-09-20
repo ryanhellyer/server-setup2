@@ -1,8 +1,9 @@
 # Certbot
 
 TLS is issued with Let's Encrypt using the **http01 webroot** challenge on port
-80 (`/var/www/acme`), served by `nginx/conf.d/http-redirect.conf` before the
-HTTPS redirect.
+80. The webroot is the host's `<WWW_ROOT>/acme` (default `~/www/acme`), mounted
+into the containers at `/var/www/acme`; it is served by
+`nginx/conf.d/http-redirect.conf` before the HTTPS redirect.
 
 ## Automation
 
@@ -28,7 +29,7 @@ sudo ./scripts/certbot-issue.sh        # issue/renew every cert in domains.txt
 ```bash
 sudo podman run --rm \
   -v "$PWD/env/letsencrypt:/etc/letsencrypt" \
-  -v /var/www/acme:/var/www/acme \
+  -v "$HOME/www/acme:/var/www/acme" \
   certbot/certbot certonly --webroot -w /var/www/acme \
   --email admin@hellyer.kiwi --agree-tos --no-eff-email \
   --cert-name example.hellyer.kiwi -d example.hellyer.kiwi

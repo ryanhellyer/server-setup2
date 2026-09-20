@@ -14,6 +14,9 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+[ -f .env ] && set -a && source .env && set +a
+source scripts/lib-paths.sh
+WWW_ROOT="$(resolve_www_root)"
 
 PLACEHOLDER='<!doctype html>
 <html lang="en">
@@ -26,22 +29,24 @@ deployed yet (fresh or test server).</p>
 </html>'
 
 # Every web root the config references (roots end in /public or /public_html).
+# The config names container paths (/var/www/...); map them to the host root.
 ROOTS="$(grep -rhoE '/var/www/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*' \
            nginx/nginx.conf nginx/conf.d 2>/dev/null \
-         | grep -E '/public(_html)?$' | sort -u)"
+         | grep -E '/public(_html)?$' | sort -u || true)"
 
 created=0
 skipped=0
 while IFS= read -r root; do
   [ -n "$root" ] || continue
-  if find "$root" -maxdepth 1 -type f \( -name 'index.html' -o -name 'index.php' -o -name 'index.htm' \) 2>/dev/null | grep -q .; then
+  host_root="$(www_host_path "$root")"
+  if find "$host_root" -maxdepth 1 -type f \( -name 'index.html' -o -name 'index.php' -o -name 'index.htm' \) 2>/dev/null | grep -q .; then
     skipped=$((skipped + 1))
     continue
   fi
-  mkdir -p "$root"
-  printf '%s\n' "$PLACEHOLDER" > "$root/index.html"
+  mkdir -p "$host_root"
+  printf '%s\n' "$PLACEHOLDER" > "$host_root/index.html"
   # index.php too, so PHP-only vhosts (e.g. the WordPress block) serve it.
-  printf '<?php header("Content-Type: text/html; charset=utf-8"); ?>\n%s\n' "$PLACEHOLDER" > "$root/index.php"
+  printf '<?php header("Content-Type: text/html; charset=utf-8"); ?>\n%s\n' "$PLACEHOLDER" > "$host_root/index.php"
   created=$((created + 1))
 done <<< "$ROOTS"
 

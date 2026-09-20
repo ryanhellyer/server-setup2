@@ -19,8 +19,8 @@ That one command:
 
 1. **Installs the host tools** (podman, podman-compose, curl, openssl, nano...) plus the
    **Starship prompt** for a nicer, consistent host shell (config in `config/starship.toml`).
-2. **Prompts to create an admin user `ryan`** with sudo privileges (skips it if
-   the user already exists).
+2. **Prompts to create an admin user `ryan`** with your SSH key and passwordless
+   `sudo` (no account password — access is key-only; `scripts/create-admin-user.sh`).
 3. **Downloads the whole repo as a tarball** from GitHub — the repo is public,
    so no SSH keys, no git, no GitHub console work are needed.
 4. **Opens the firewall ports** 22/80/443 (added automatically; harmless if ufw
@@ -35,6 +35,35 @@ That one command:
 
 No further commands needed — visit `https://ionos.hellyer.kiwi` when the deploy
 finishes.
+
+## Install / manage a remote server from your laptop
+
+`bootstrap.sh` provisions and drives a server over SSH from your own machine.
+Hetzner ships boxes with password auth, so the first contact uses the password
+**once**; the script then installs your public key, creates the admin user, and
+disables password auth.
+
+```bash
+./bootstrap.sh --host 203.0.113.10        # provision, then open the on-server menu
+./bootstrap.sh --host box.example.com --no-harden
+```
+
+What it does, in order:
+
+1. Installs your key for the login user (default `root`) — one password prompt.
+2. Creates `ryan` with the same key and `NOPASSWD` sudo
+   (`scripts/create-admin-user.sh`).
+3. Hardens sshd — `PasswordAuthentication no`, `PermitRootLogin
+   prohibit-password` (`scripts/harden-sshd.sh`). It refuses to run unless a key
+   is already installed for `root` or `ryan`, so it can't lock you out.
+4. Runs the installer: the fresh-host bootstrap on a new box, or the on-server
+   menu if the repo is already at `/opt/server-setup`.
+
+Flags: `--user`, `--admin-user`, `--port`, `--identity`, `--install`,
+`--no-harden`. The password is entered by `ssh` and never stored.
+
+> Changed your mind? `sudo bash scripts/harden-sshd.sh --revert` restores
+> password authentication.
 
 ## Everything else: `sudo ./setup.sh`
 
@@ -52,6 +81,7 @@ menu that delegates to the scripts in `scripts/`:
 - **9)** show stack status
 - **10)** tail container logs
 - **11)** connect the Hetzner Storage Boxes (passwordless key + `gmail`/`databases` mounts)
+- **12)** harden SSH (disable password authentication)
 
 ## Manual path
 
@@ -84,14 +114,32 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
 | Import/re-sync a site from the Hetzner storage box | `sudo bash scripts/sync-site.sh` (auto-run by `deploy.sh`) |
 | Set up Hetzner Storage Box access (both boxes) + mount `gmail`, `databases` | `sudo bash scripts/hetzner-mounts.sh` |
+| Create/refresh the admin user (`ryan`) with a key + passwordless sudo | `sudo bash scripts/create-admin-user.sh` |
+| Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
+| Provision/install a remote server, or open its menu over SSH | `./bootstrap.sh --host <ip>` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
 
-## Web directory permissions
+## Where the site files live
 
-`/var/www` uses a shared-hosting model so files stay editable both by `ryan`
-(SSH) and by the containers (`www-data` — same uid/gid 33 on host and images):
+Site files live in the **admin user's home** — `~/www` (e.g. `/home/ryan/www`),
+not `/var/www` — so they sit on the home partition and survive a move to an
+atomic/immutable distro such as Fedora Silverblue. Override in `.env` with
+`WWW_ROOT`.
+
+The containers still see the same files at **`/var/www`**: `compose.yaml` mounts
+`${WWW_ROOT:-/home/ryan/www}:/var/www`, so the nginx config
+(`nginx/conf.d/*.conf`) and the container images are unchanged. Host-side
+scripts translate between the two via `scripts/lib-paths.sh`.
+
+> **Upgrading a box that still has content in `/var/www`?** Move it once:
+> `sudo install -d -o ryan -g www-data -m 2775 /home/ryan/www && sudo rsync -a /var/www/ /home/ryan/www/`,
+> then `sudo bash scripts/deploy.sh` (or re-run `scripts/sync-site.sh`).
+
+`~/www` uses a shared-hosting permission model so files stay editable both by
+`ryan` (SSH) and by the containers (`www-data` — same uid/gid 33 on host and
+images):
 
 * owner `ryan`, group `www-data`; dirs `2775` (setgid), files `664`.
 * `ryan` is added to the `www-data` group and gets `umask 002` in `.bashrc`
@@ -153,7 +201,7 @@ install/deploy:
 Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer'`.
 
 > **Note:** `scripts/backup.sh` is a **work in progress** — it's a simple
-> "mysqldump everything + tar `/var/www`" script and needs upgrading to match
+> "mysqldump everything + tar `~/www`" script and needs upgrading to match
 > the real production backup system. The current real backup system from the
 > main site lives in [`temp-backup/`](temp-backup/) (`backup.sh`,
 > `backup-config.sh`, `backups/`) — use it as the reference to build the real

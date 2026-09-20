@@ -22,7 +22,7 @@ services:
       - ./nginx/dhparam.pem:/etc/nginx/dhparam.pem:ro
       - ./env/letsencrypt:/etc/letsencrypt:ro
       - php-socket:/run/php:ro
-      - /var/www:/var/www
+      - ${WWW_ROOT:-/home/ryan/www}:/var/www
       - /var/log/nginx:/var/log/nginx
       - /var/cache/nginx:/var/cache/nginx
     depends_on:
@@ -39,7 +39,7 @@ services:
       - ./php/20-fpm-security.ini:/etc/php/8.5/fpm/conf.d/20-fpm-security.ini:ro
       - ./php/fpm-www.conf:/etc/php/8.5/fpm/pool.d/www.conf:ro
       - php-socket:/run/php
-      - /var/www:/var/www
+      - ${WWW_ROOT:-/home/ryan/www}:/var/www
     networks: [web, backend]
     restart: unless-stopped
 
@@ -47,7 +47,7 @@ services:
     build: ./node
     container_name: node
     volumes:
-      - /var/www:/var/www
+      - ${WWW_ROOT:-/home/ryan/www}:/var/www
     networks: [web]
     restart: unless-stopped
 

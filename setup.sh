@@ -11,10 +11,12 @@
 #
 #   * FRESH HOST (no repo installed — the curl|bash one-liner above):
 #       1. Installs the host packages (podman, podman-compose, curl, openssl, nano...).
-#       2. Prompts to create an admin user 'ryan' with sudo privileges.
-#       3. Downloads this whole repo as a tarball from GitHub (public repo — no
+#       2. Downloads this whole repo as a tarball from GitHub (public repo — no
 #          SSH keys needed) into /opt/server-setup and writes a .tarball marker
 #          so deploy.sh can refresh the files the same way later.
+#       3. Prompts to create an admin user 'ryan' — key-based, with passwordless
+#          sudo (scripts/create-admin-user.sh). SERVER_SETUP_ADMIN_KEY supplies
+#          the caller's key when run via bootstrap.sh.
 #       4. Re-execs the installed copy, which presents the menu.
 #
 #   * INSTALLED SERVER (repo found next to this script, or in /opt/server-setup):
@@ -81,33 +83,6 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   apt-get install -y curl tar ca-certificates
   ok "Fetch tools installed."
 
-  # ---- admin user ----
-  if ask_yn "Create admin user 'ryan' with sudo privileges?"; then
-    if id ryan >/dev/null 2>&1; then
-      say "User 'ryan' already exists — ensuring sudo."
-      usermod -aG sudo ryan
-    else
-      say "Creating user 'ryan'."
-      useradd -m -s /bin/bash ryan
-      usermod -aG sudo ryan
-      echo
-      echo "Set a password for 'ryan' (needed for sudo)."
-      passwd ryan
-    fi
-    ok "User 'ryan' has sudo privileges."
-
-    # ---- SSH key for passwordless login ----
-    say "Installing SSH public key for 'ryan'."
-    install -d -o ryan -g "$(id -gn ryan)" -m 700 /home/ryan/.ssh
-    touch /home/ryan/.ssh/authorized_keys
-    chmod 600 /home/ryan/.ssh/authorized_keys
-    chown ryan:"$(id -gn ryan)" /home/ryan/.ssh/authorized_keys
-    grep -qs 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX' \
-      /home/ryan/.ssh/authorized_keys \
-      || echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX ryanhellyer@gmail.com' >> /home/ryan/.ssh/authorized_keys
-    ok "SSH key installed for passwordless login."
-  fi
-
   # ---- download the files (no git, no keys) ----
   REPO_DIR="/opt/server-setup"
   TARBALL_URL="${SERVER_SETUP_TARBALL:-https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz}"
@@ -145,6 +120,19 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   if [ -d "$REPO_DIR/.git" ]; then
     say "Removing stale .git from an earlier git-clone install (tarball mode now)."
     rm -rf "$REPO_DIR/.git"
+  fi
+
+  # ---- admin user 'ryan' (shared with bootstrap.sh) ----
+  # SERVER_SETUP_ADMIN_KEY lets a remote caller (bootstrap.sh) supply the
+  # caller's own key. Fallback: the maintainer's key, so a bare `curl | bash`
+  # install still ends up with passwordless SSH. No password is set on the
+  # account — access is key-only, with passwordless sudo.
+  DEFAULT_ADMIN_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX ryanhellyer@gmail.com'
+  if ask_yn "Create/update admin user 'ryan' with sudo and your SSH key?"; then
+    ADMIN_USER=ryan \
+      ADMIN_KEY="${SERVER_SETUP_ADMIN_KEY:-$DEFAULT_ADMIN_KEY}" \
+      bash "$REPO_DIR/scripts/create-admin-user.sh"
+    ok "Admin user 'ryan' ready (key-based, passwordless sudo)."
   fi
 
   # ---- full host setup: packages + bind-mount dirs + swap ----
@@ -195,6 +183,7 @@ show_menu() {
   echo " 9) Show stack status"
   echo "10) Tail container logs"
   echo "11) Connect the Hetzner Storage Boxes"
+  echo "12) Harden SSH (disable password authentication)"
   echo " 0) Quit"
   echo
 }
@@ -259,6 +248,7 @@ while true; do
     9) podman ps ;;
     10) pick_container ;;
     11) sudo bash scripts/hetzner-mounts.sh ;;
+    12) sudo bash scripts/harden-sshd.sh ;;
     0|q|quit) echo "Bye."; exit 0 ;;
     *) echo "Invalid choice." ;;
   esac

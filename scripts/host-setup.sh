@@ -11,6 +11,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ "$(id -u)" -eq 0 ] || { echo "Run as root."; exit 1; }
 
+[ -f .env ] && set -a && source .env && set +a
+source scripts/lib-paths.sh
+WWW_ROOT="$(resolve_www_root)"
+
 export DEBIAN_FRONTEND=noninteractive
 
 echo "==> apt update + upgrade"
@@ -32,7 +36,18 @@ apt-get install -y \
   nano
 
 echo "==> creating bind-mount directories"
-mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
+mkdir -p /var/databases /var/cache/nginx /var/log/nginx
+
+# Site files live under the admin user's home (~/www), mounted at /var/www in
+# the containers. Create it owned by ryan:www-data with the setgid bit.
+WWW_GROUP="www-data"
+getent group www-data >/dev/null 2>&1 || WWW_GROUP="root"
+if id ryan >/dev/null 2>&1; then
+  install -d -o ryan -g "$WWW_GROUP" -m 2775 "$WWW_ROOT"
+else
+  install -d -g "$WWW_GROUP" -m 2775 "$WWW_ROOT"
+fi
+echo "==> web root: $WWW_ROOT (owner ryan:$WWW_GROUP, setgid)"
 
 echo "==> adding admin user to www-data group (shared web-write model)"
 if id ryan >/dev/null 2>&1; then

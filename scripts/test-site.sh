@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # =============================================================================
 # test-site.sh — scaffold the ionos.hellyer.kiwi test site on THIS server.
-# Copies the versioned test page from sites/ionos.hellyer.kiwi/ into
-# /var/www/ionos.hellyer.kiwi/public/ and reloads nginx.
+# Copies the versioned test page from sites/ionos.hellyer.kiwi/ into the host
+# web root (~/www/ionos.hellyer.kiwi/public/) and reloads nginx.
 #
 #   sudo ./scripts/test-site.sh
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
+source scripts/lib-paths.sh
+[ -f .env ] && set -a && source .env && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 SRC="sites/ionos.hellyer.kiwi"
-DEST="/var/www/ionos.hellyer.kiwi/public"
+DEST="$WWW_ROOT/ionos.hellyer.kiwi/public"
 
 [ -d "$SRC" ] || { echo "Missing $SRC"; exit 1; }
 

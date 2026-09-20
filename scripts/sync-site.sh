@@ -3,8 +3,9 @@
 # sync-site.sh — import a site snapshot from the Hetzner storage box.
 #
 # Pulls the directory in HETZNER_SYNC_SRC (a dated snapshot like
-# /home/pressabl/2026-08-27/spam-destroyer.com) into HETZNER_SYNC_DEST
-# (/var/www/...) on every deploy, keeping it in sync with the snapshot.
+# /home/pressabl/2026-08-27/spam-destroyer.com) into HETZNER_SYNC_DEST (a host
+# web-root path like ~/www/...) on every deploy, keeping it in sync with the
+# snapshot.
 #
 # Config comes from .env (see .env.example):
 #   HETZNER_SYNC_USER   storage box user, e.g. u513410
@@ -25,7 +26,9 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-paths.sh
 [ -f .env ] && set -a && source .env && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 SRC="${HETZNER_SYNC_SRC:-}"
 DEST="${HETZNER_SYNC_DEST:-}"

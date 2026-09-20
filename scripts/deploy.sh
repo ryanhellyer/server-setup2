@@ -27,6 +27,7 @@
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib-paths.sh
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo bash scripts/deploy.sh)."; exit 1; }
 
@@ -36,7 +37,7 @@ if ! command -v podman >/dev/null 2>&1 || ! command -v podman-compose >/dev/null
   echo "==> podman/podman-compose/curl/tar not all present — installing host packages first"
   bash scripts/host-setup.sh
 else
-  mkdir -p /var/www /var/databases /var/cache/nginx /var/log/nginx
+  mkdir -p /var/databases /var/cache/nginx /var/log/nginx
 fi
 
 # ---- 1b. firewall: always allow the ports the site + certbot need ----
@@ -62,6 +63,13 @@ fi
 set -a && . ./.env && set +a
 DEPLOY_ENV="${DEPLOY_ENV:-test}"
 echo "==> Deployment mode: $DEPLOY_ENV"
+
+# Site files live under the admin user's home (~/www) on the host, mounted into
+# the containers at /var/www (see scripts/lib-paths.sh + compose.yaml).
+WWW_ROOT="$(resolve_www_root)"
+mkdir -p "$WWW_ROOT"
+export WWW_ROOT   # so `podman compose` mounts the same path
+echo "==> Web root (host): $WWW_ROOT  (containers see it as $CONTAINER_WWW)"
 
 # ---- 3. refresh files ----
 # Tarball install (.tarball marker) -> re-download. Git clone -> git pull.
@@ -163,8 +171,11 @@ LOG_DIRS="$( { grep -rhoE '^\s*(access_log|error_log) [^;]+;' nginx/nginx.conf n
   | sed -E 's/^\s*(access_log|error_log) +([^ ]+).*/\2/' \
   | grep '^/' | xargs -r -n1 dirname | sort -u )"
 if [ -n "$LOG_DIRS" ]; then
-  # shellcheck disable=SC2086
-  mkdir -p $LOG_DIRS
+  # The config names container paths (/var/www/...); create them on the host.
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    mkdir -p "$(www_host_path "$d")"
+  done <<< "$LOG_DIRS"
 fi
 
 # ---- 7. TEST MODE: fake sites + temporary certs ----
@@ -188,7 +199,7 @@ echo "==> nginx -t against the repo config"
 podman run --rm \
   -v "$PWD/nginx:/etc/nginx:ro" \
   -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" \
-  -v /var/www:/var/www \
+  -v "$WWW_ROOT:/var/www" \
   "$IMAGE_ID" nginx -t
 
 # ---- 9. compose up ----
@@ -198,7 +209,7 @@ echo "==> bring the stack up (build + start)"
 # ---- 9b. web-dir ownership + permissions (ryan:www-data, setgid) ----
 # Idempotent; also catches a server that predates this step.
 echo "==> apply web-dir permissions (ryan:www-data)"
-"$PWD/scripts/fix-perms.sh" /var/www
+"$PWD/scripts/fix-perms.sh" "$WWW_ROOT"
 
 # ---- 9c. import site snapshot(s) from the Hetzner storage box ----
 # .env-gated (HETZNER_SYNC_SRC empty = skipped). If the SSH key isn't

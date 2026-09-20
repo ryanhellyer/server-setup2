@@ -17,12 +17,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
+source scripts/lib-paths.sh
 [ -f .env ] && set -a && source .env && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
-WEBROOT="/var/www/acme"
+WEBROOT="$WWW_ROOT/acme"
 LETSENCRYPT_DIR="$PWD/env/letsencrypt"
 DOMAINS_FILE="${CERTBOT_DOMAINS_FILE:-certbot/domains.txt}"
 EMAIL="${CERTBOT_EMAIL:-admin@hellyer.kiwi}"

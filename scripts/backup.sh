@@ -3,8 +3,8 @@
 # backup.sh — nightly DB dump + site archive, pruned and offloaded to Hetzner.
 #
 # ⚠️ WORK IN PROGRESS — needs upgrading to match the real backup system.
-#    This is a simple "mysqldump everything + tar /var/www" script; the real
-#    production backup setup is in temp-backup/ (backup.sh + backup-config.sh
+#    This is a simple "mysqldump everything + tar the web root (~/www)" script;
+#    the real production backup setup is in temp-backup/ (backup.sh + backup-config.sh
 #    + backups/ from the main site). Use temp-backup/ as the reference to build
 #    the real new backup system. Until it's upgraded, treat this as a starting
 #    point, not the final backup solution.
@@ -16,7 +16,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
+source scripts/lib-paths.sh
 [ -f .env ] && set -a && source .env && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 STAMP="$(date +%Y-%m-%d_%H%M)"
 BACKUP_DIR="/var/databases"
@@ -29,8 +31,8 @@ if podman ps --format '{{.Names}}' | grep -q "^$CONTAINER_MARIADB$"; then
   gzip -f "$BACKUP_DIR/mysql-all-$STAMP.sql"
 fi
 
-echo "==> Archiving /var/www (site files)"
-tar czf "$BACKUP_DIR/www-$STAMP.tar.gz" -C / var/www 2>/dev/null || true
+echo "==> Archiving $WWW_ROOT (site files)"
+tar czf "$BACKUP_DIR/www-$STAMP.tar.gz" -C / "${WWW_ROOT#/}" 2>/dev/null || true
 
 echo "==> Pruning backups older than 14 days"
 find "$BACKUP_DIR" -name 'mysql-all-*.sql.gz' -mtime +14 -delete
