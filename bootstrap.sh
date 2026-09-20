@@ -113,12 +113,16 @@ fi
 ok "Using public key: $(printf '%s' "$PUBKEY" | awk '{print $1, substr($2,1,12)"…", $3}')"
 
 # ---- ssh/scp option arrays ----
-SSH_OPTS=(-p "$PORT" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30)
-SCP_OPTS=(-P "$PORT" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30)
-if [ -n "$IDENTITY" ]; then
-  SSH_OPTS+=(-i "$IDENTITY")
-  SCP_OPTS+=(-i "$IDENTITY")
-fi
+# Pin to the one key we intend to use. A .pub path is fine for an agent-backed
+# key (ssh finds the private half in the agent). IdentitiesOnly matters: without
+# it ssh offers EVERY agent key, and a server with a low MaxAuthTries or
+# fail2ban drops the connection before the password prompt — the "Connection
+# closed by <host> port 22" failure.
+if [ -n "$IDENTITY" ]; then SSH_ID_FILE="$IDENTITY"; else SSH_ID_FILE="$PUBFILE"; fi
+SSH_OPTS=(-p "$PORT" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30
+          -i "$SSH_ID_FILE" -o IdentitiesOnly=yes)
+SCP_OPTS=(-P "$PORT" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30
+          -i "$SSH_ID_FILE")
 
 run_ssh()   { ssh "${SSH_OPTS[@]}" "$@"; }
 run_ssh_t() { ssh -t "${SSH_OPTS[@]}" "$@"; }
@@ -128,6 +132,19 @@ key_login_works() { # "$1" = user
     "$1@$HOST" true >/dev/null 2>&1
 }
 
+# Append our public key over SSH using the PASSWORD, in a single attempt.
+# Publickey auth is disabled for this one call so no (failing) key is offered
+# and there is nothing to trip MaxAuthTries/fail2ban before the password prompt.
+install_key_password() {
+  cat "$PUBFILE" | ssh -p "$PORT" \
+    -o StrictHostKeyChecking=accept-new \
+    -o PubkeyAuthentication=no \
+    -o PreferredAuthentications=password,keyboard-interactive \
+    -o NumberOfPasswordPrompts=1 \
+    "$TARGET" \
+    'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys'
+}
+
 # =============================================================================
 # 1. Install the login user's key (single password prompt on first contact)
 # =============================================================================
@@ -135,19 +152,18 @@ if key_login_works "$TARGET_USER"; then
   ok "Key-based login to $TARGET already works."
 else
   say "First contact with $TARGET — you'll be asked for the password ONCE."
-  if command -v ssh-copy-id >/dev/null 2>&1; then
-    if [ -n "$IDENTITY" ]; then
-      ssh-copy-id -p "$PORT" -o StrictHostKeyChecking=accept-new -i "$PUBFILE" "$TARGET"
-    else
-      ssh-copy-id -p "$PORT" -o StrictHostKeyChecking=accept-new "$TARGET"
-    fi
+  if install_key_password && key_login_works "$TARGET_USER"; then
+    ok "Key installed for $TARGET_USER."
   else
-    warn "ssh-copy-id not found — installing the key manually."
-    cat "$PUBFILE" | ssh "${SSH_OPTS[@]}" "$TARGET" \
-      'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys'
+    warn "Could not install the key with the password."
+    warn "Likely causes: wrong password; password auth disabled for '$TARGET_USER'; or the"
+    warn "source IP is temporarily blocked (fail2ban) after earlier failed attempts."
+    warn "Install the key manually (this prompts for the password):"
+    printf '\n    cat %s | ssh -p %s -o PubkeyAuthentication=no -o PreferredAuthentications=password %s \\\n' \
+      "$PUBFILE" "$PORT" "$TARGET"
+    printf "      'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys'\n\n"
+    die "Aborting; nothing was changed."
   fi
-  key_login_works "$TARGET_USER" || die "Key login to $TARGET_USER@$HOST still fails."
-  ok "Key installed for $TARGET_USER."
 fi
 
 # Cache sudo credentials for a non-root login user (piped steps can't prompt).
