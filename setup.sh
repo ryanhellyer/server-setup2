@@ -154,6 +154,12 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   bash "$REPO_DIR/scripts/host-setup.sh"
   ok "Host packages installed."
 
+  # ---- Hetzner storage-box access + mounts (asks for each box password once) ----
+  if ask_yn "Set up Hetzner Storage Box access and mounts (gmail + databases) now?"; then
+    bash "$REPO_DIR/scripts/hetzner-mounts.sh" \
+      || say "Hetzner mounts not configured — use menu option 11 later."
+  fi
+
   say "Re-running the installed copy to present the menu."
   cd "$REPO_DIR"
   exec bash "$REPO_DIR/setup.sh"
@@ -188,6 +194,7 @@ show_menu() {
   echo " 8) Install host CLI tools (php, composer, mariadb, ...)"
   echo " 9) Show stack status"
   echo "10) Tail container logs"
+  echo "11) Connect the Hetzner Storage Boxes"
   echo " 0) Quit"
   echo
 }
@@ -251,6 +258,7 @@ while true; do
     8) bash scripts/install-cli.sh ;;
     9) podman ps ;;
     10) pick_container ;;
+    11) sudo bash scripts/hetzner-mounts.sh ;;
     0|q|quit) echo "Bye."; exit 0 ;;
     *) echo "Invalid choice." ;;
   esac

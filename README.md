@@ -51,6 +51,7 @@ menu that delegates to the scripts in `scripts/`:
 - **8)** install host CLI tools (php, composer, mariadb, ...)
 - **9)** show stack status
 - **10)** tail container logs
+- **11)** connect the Hetzner Storage Boxes (passwordless key + `gmail`/`databases` mounts)
 
 ## Manual path
 
@@ -82,6 +83,7 @@ sudo ./setup.sh                        # menu: pick "Full install / deploy / upd
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
 | Import/re-sync a site from the Hetzner storage box | `sudo bash scripts/sync-site.sh` (auto-run by `deploy.sh`) |
+| Set up Hetzner Storage Box access (both boxes) + mount `gmail`, `databases` | `sudo bash scripts/hetzner-mounts.sh` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
