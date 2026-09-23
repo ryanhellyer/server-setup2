@@ -18,6 +18,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
 source scripts/lib-paths.sh
+source scripts/lib-nginx.sh
 [ -f .env ] && set -a && source .env && set +a
 WWW_ROOT="$(resolve_www_root)"
 
@@ -118,8 +119,17 @@ if [ ! -e "$LETSENCRYPT_DIR/live/pressabl/fullchain.pem" ]; then
   FAILED=1
 fi
 
+# A missing log dir (e.g. removed by provisioning's rsync --delete) makes
+# nginx -t fail, which blocks the reload and leaves nginx serving the
+# certificate it loaded at startup (the self-signed placeholder). Ensure the
+# dirs exist, then only reload if the config is valid.
+ensure_nginx_log_dirs
+
 echo "==> Reloading nginx"
-podman exec "$CONTAINER_NGINX" nginx -s reload || true
+if ! reload_nginx; then
+  echo "!! nginx could not be reloaded — the new certificate is NOT active."
+  FAILED=1
+fi
 
 if [ "$FAILED" -ne 0 ]; then
   echo "!! One or more certificates could not be issued (see messages above)."

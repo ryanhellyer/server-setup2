@@ -28,6 +28,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-paths.sh
+source scripts/lib-containers.sh
+source scripts/lib-nginx.sh
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo bash scripts/deploy.sh)."; exit 1; }
 
@@ -187,18 +189,10 @@ fi
 # ---- 6. create log dirs referenced by the nginx config ----
 # nginx -t fails if a static access_log/error_log path's parent dir is missing,
 # so create every log directory the config references (works on a fresh box
-# before the sites have been migrated in).
+# before the sites have been migrated in). Re-run after provisioning too, since
+# rsync --delete can remove a site's logs/ dir (see lib-nginx.sh).
 echo "==> creating log directories referenced by the nginx config"
-LOG_DIRS="$( { grep -rhoE '^\s*(access_log|error_log) [^;]+;' nginx/nginx.conf nginx/conf.d nginx/snippets 2>/dev/null; } \
-  | sed -E 's/^\s*(access_log|error_log) +([^ ]+).*/\2/' \
-  | grep '^/' | xargs -r -n1 dirname | sort -u )"
-if [ -n "$LOG_DIRS" ]; then
-  # The config names container paths (/var/www/...); create them on the host.
-  while IFS= read -r d; do
-    [ -n "$d" ] || continue
-    mkdir -p "$(www_host_path "$d")"
-  done <<< "$LOG_DIRS"
-fi
+ensure_nginx_log_dirs
 
 # ---- 7. TEST MODE: fake sites + temporary certs ----
 # Nothing here runs in production — set DEPLOY_ENV=production in .env and
@@ -242,6 +236,11 @@ echo "==> apply web-dir permissions (ryan:www-data)"
 # NOT abort the deploy — print and keep going, like the certbot step below.
 "$PWD/scripts/provision-all.sh" \
   || echo "==> (provisioning had failures — see above; re-run: sudo bash scripts/provision-all.sh)"
+
+# Provisioning rsyncs with --delete and can remove a site's logs/ dir, which
+# would make nginx -t fail and block the post-certbot reload (leaving the
+# self-signed placeholder in place). Recreate every referenced log dir.
+ensure_nginx_log_dirs
 
 # ---- 9d. host CLI wrappers for the admin user ----
 # php/composer/mariadb/... + pod-login (interactive shell) into ~/.local/bin.

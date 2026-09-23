@@ -78,7 +78,7 @@ if [ "$DO_FILES" = 1 ]; then
   else
     say "Syncing files -> $LOCAL_DIR"
     run mkdir -p "$LOCAL_DIR"
-    run rsync -az --delete --exclude='*.log' --exclude='.cache' --exclude='lost+found' \
+    run rsync -az --delete --exclude='*.log' --exclude='/logs' --exclude='.cache' --exclude='lost+found' \
       -e "ssh -i $STORAGE_KEY -p $STORAGE_PORT -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
       "$STORAGE_USER@$STORAGE_HOST:$REMOTE_DIR/" "$LOCAL_DIR/"
     run bash "$PWD/scripts/fix-perms.sh" "$LOCAL_DIR" >/dev/null
