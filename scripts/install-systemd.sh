@@ -53,6 +53,22 @@ After=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service con
 Wants=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_NODE.service container-$CONTAINER_OPENWEBUI.service
 EOF
 
+# open-webui: cap CPU/memory and bound crash restarts, so a broken app (e.g. a
+# corrupt SQLite DB) can't peg a core or restart forever. Its compose service
+# deliberately has no podman restart policy, so systemd is the sole supervisor.
+OPENWEBUI_OVERRIDE="$SYSTEMD_DIR/container-$CONTAINER_OPENWEBUI.service.d/limits.conf"
+mkdir -p "$(dirname "$OPENWEBUI_OVERRIDE")"
+cat > "$OPENWEBUI_OVERRIDE" <<EOF
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Restart=on-failure
+CPUQuota=100%
+MemoryMax=1G
+EOF
+
 systemctl daemon-reload
 
 for c in "${CONTAINERS[@]}"; do

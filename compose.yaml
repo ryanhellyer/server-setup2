@@ -66,7 +66,15 @@ services:
     ports:
       - "127.0.0.1:3000:8080"   # localhost only; nginx proxies via the web network
     networks: [web]
-    restart: unless-stopped
+    # NO podman restart policy (deliberate): systemd supervises this unit
+    # (Restart=on-failure with a StartLimit, see install-systemd.sh), so a
+    # crash-looping app — e.g. a corrupt SQLite DB — can't restart forever and
+    # peg a CPU. Resource limits stop it starving the rest of the stack.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
 
   mariadb:
     image: docker.io/mariadb:11

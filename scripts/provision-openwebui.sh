@@ -85,6 +85,32 @@ if [ "$DO_FILES" = 1 ]; then
   [ "$DRY" != 1 ] && chown -R ryan:ryan "$LOCAL_DIR" 2>/dev/null || true
 fi
 
+# ---- SQLite sanity check ----------------------------------------------------
+# A webui.db captured while Open WebUI was running (WAL not checkpointed) can be
+# corrupt, and a corrupt DB makes the container crash-loop on every start. If
+# the restored DB fails `PRAGMA integrity_check`, move it aside so Open WebUI
+# rebuilds a fresh one instead of looping. Runs the check via the php-fpm
+# container (which ships sqlite3); falls back to a host sqlite3 if present.
+if [ "$DO_FILES" = 1 ] && [ "$DRY" != 1 ]; then
+  DB="$LOCAL_DIR/webui.db"
+  CONT_DB="/var/www/$SITE_DIR/webui.db"
+  result=""
+  if [ -f "$DB" ]; then
+    if podman container exists "$CONTAINER_PHP_FPM" 2>/dev/null \
+       && podman exec "$CONTAINER_PHP_FPM" sh -c 'command -v sqlite3' >/dev/null 2>&1; then
+      result="$(podman exec "$CONTAINER_PHP_FPM" sqlite3 "$CONT_DB" 'PRAGMA integrity_check;' 2>/dev/null | head -1 || true)"
+    elif command -v sqlite3 >/dev/null 2>&1; then
+      result="$(sqlite3 "$DB" 'PRAGMA integrity_check;' 2>/dev/null | head -1 || true)"
+    fi
+    case "$result" in
+      ok) ok "webui.db integrity check passed." ;;
+      "") warn "Could not run sqlite integrity_check (no sqlite3) — skipping." ;;
+      *)  warn "webui.db failed integrity_check ('$result') — moving it aside; Open WebUI will build a fresh DB."
+          mv -f "$DB" "$DB.corrupt-$(date +%Y%m%d%H%M%S)" ;;
+    esac
+  fi
+fi
+
 # ---- bring up the container -------------------------------------------------
 say "Bringing up the open-webui service"
 if [ "$DRY" = 1 ]; then

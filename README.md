@@ -179,6 +179,16 @@ sudo bash scripts/install-login-help.sh --remove   # remove it
   It does **not** re-provision sites, so site data is untouched. Logs:
   `/var/log/server-setup/update.log`.
 
+### Open WebUI resilience
+
+`chat.hellyer.kiwi` keeps its SQLite DB on the shared volume. The container has
+**no podman restart policy** — systemd supervises it with a bounded restart
+(`StartLimitBurst=5`) and `CPUQuota=100%` / `MemoryMax=1G`
+(`scripts/install-systemd.sh`), so a crash-looping app can't peg a core or spin
+forever. `scripts/provision-openwebui.sh` runs `PRAGMA integrity_check` on the
+restored `webui.db` and moves a corrupt one aside (Open WebUI then rebuilds a
+fresh DB) instead of looping.
+
 ## Where the site files live
 
 Site files live in the **admin user's home** — `~/www` (e.g. `/home/ryan/www`),
