@@ -243,6 +243,16 @@ echo "==> apply web-dir permissions (ryan:www-data)"
 "$PWD/scripts/provision-all.sh" \
   || echo "==> (provisioning had failures — see above; re-run: sudo bash scripts/provision-all.sh)"
 
+# ---- 9d. host CLI wrappers for the admin user ----
+# php/composer/mariadb/... + pod-login (interactive shell) into ~/.local/bin.
+# Idempotent; catches servers installed before this step existed.
+echo "==> install host CLI wrappers (php, composer, pod-login, ...)"
+"$PWD/scripts/install-cli.sh"
+
+# ---- 9e. SSH login banner listing the host helper commands ----
+echo "==> install SSH login banner (helper commands)"
+"$PWD/scripts/install-login-help.sh"
+
 # ---- 10. systemd units ----
 echo "==> install systemd units so the stack starts at boot"
 "$PWD/scripts/install-systemd.sh"

@@ -121,8 +121,38 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
 | Provision/install a remote server, or open its menu over SSH | `./bootstrap.sh --host <ip>` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
+| Open a terminal in a container (defaults to the PHP box) | `pod-login [container]` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
+
+### Host helper commands
+
+`scripts/install-cli.sh` (run by `deploy.sh`, or menu item 7) drops wrappers into
+the admin user's `~/.local/bin` — the php/composer/mariadb/... commands above,
+plus these container helpers:
+
+| Command | What it does |
+|---|---|
+| `pod-login [container]` | interactive shell (default `php-fpm`); mirrors cwd, auto-sudo, `-u user` |
+| `pod-logs [container] [-f] [-n N]` | print / follow a container's logs (default `php-fpm`) |
+| `pod-status` | fixed-order stack state + health table; exits non-zero if degraded |
+| `pod-restart <container>` / `--all [-y]` | restart one container or the whole stack |
+| `sites` | list the sites under `~/www` with their type and database |
+| `cert-status` | TLS certificate domains + expiry (offline, via `openssl`) |
+
+```bash
+pod-login                 # root shell in php-fpm (the main PHP box)
+pod-login mariadb         # root shell in the database container
+pod-login -u www-data php-fpm   # as www-data, so files stay owned correctly
+pod-login --list          # show the running stack containers
+pod-logs nginx -f         # follow the web-server logs
+pod-restart --all         # restart the whole stack
+```
+
+`pod-login` mirrors your current directory into the container when you are under
+the web root (`~/www` -> `/var/www`) and runs under `sudo` automatically; it
+defaults to `php-fpm` because that is where the PHP tooling (and the site files)
+live.
 
 ## Where the site files live
 
