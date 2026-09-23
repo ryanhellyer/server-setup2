@@ -32,8 +32,33 @@ apt-get install -y \
   openssh-client \
   sshfs \
   ufw \
+  fail2ban \
   unattended-upgrades \
   nano
+
+echo "==> capping journald size"
+install -d -m 755 /etc/systemd/journald.conf.d
+cat > /etc/systemd/journald.conf.d/90-server-setup.conf <<'EOF'
+# Managed by server-setup (scripts/host-setup.sh).
+[Journal]
+SystemMaxUse=200M
+SystemMaxFileSize=50M
+EOF
+systemctl restart systemd-journald 2>/dev/null || true
+
+echo "==> fail2ban: sshd jail (systemd backend)"
+cat > /etc/fail2ban/jail.local <<'EOF'
+# Managed by server-setup (scripts/host-setup.sh).
+[DEFAULT]
+backend  = systemd
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+EOF
+systemctl enable --now fail2ban 2>/dev/null || true
 
 echo "==> creating bind-mount directories"
 mkdir -p /var/databases /var/cache/nginx /var/log/nginx

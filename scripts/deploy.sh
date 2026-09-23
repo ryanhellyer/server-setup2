@@ -60,7 +60,8 @@ if command -v ufw >/dev/null 2>&1; then
   ufw allow 22/tcp   >/dev/null 2>&1 || true
   ufw allow 80/tcp   >/dev/null 2>&1 || true
   ufw allow 443/tcp  >/dev/null 2>&1 || true
-  echo "==> firewall rules ensured (22, 80, 443/tcp)"
+  ufw --force enable >/dev/null 2>&1 || true
+  echo "==> firewall enabled (22, 80, 443/tcp)"
 fi
 
 # ---- 1c. swap: avoid OOM / thrash on small boxes ----

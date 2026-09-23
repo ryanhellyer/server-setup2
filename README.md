@@ -123,7 +123,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Open a terminal in a container (defaults to the PHP box) | `pod-login [container]` |
 | Install / remove the SSH login helper banner | `sudo bash scripts/install-login-help.sh [--remove]` |
-| Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
+| Re-apply host packages / Starship / swap / firewall / fail2ban / journald cap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
 
 ### Host helper commands
