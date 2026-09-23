@@ -106,6 +106,7 @@ server-setup/
 |   |-- restore.sh                # restore DBs + the web root (~/www) from the latest backup
 |   |-- certbot-issue.sh          # issue/renew certs (env-driven cert list)
 |   |-- install-cli.sh            # symlink host CLI wrappers into ~/.local/bin
+|   |-- install-login-help.sh     # /etc/update-motd.d banner listing the helpers
 |   |-- install-systemd.sh        # systemd units so the stack starts at boot
 |   |-- lib-containers.sh         # SINGLE source of truth: container names + CLI map
 |   `-- test-site.sh              # scaffold the ionos.hellyer.kiwi test page
@@ -455,6 +456,10 @@ Then, from the host (as root):
 | `pod-restart <container>` / `--all [-y]` | any | restart a container or the whole stack |
 | `sites` | host files | list sites under `~/www` with detected type + database |
 | `cert-status` | host files | TLS certificate domains + expiry (offline, `openssl`) |
+
+This list is also installed as an SSH login banner
+(`/etc/update-motd.d/99-server-setup` via `scripts/install-login-help.sh`), so it
+is shown by `pam_motd` on every interactive login.
 
 Example session:
 

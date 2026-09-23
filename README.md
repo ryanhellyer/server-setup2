@@ -122,6 +122,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Provision/install a remote server, or open its menu over SSH | `./bootstrap.sh --host <ip>` |
 | Run CLI tools on the host (php, composer, mariadb, ffmpeg...) | `bash scripts/install-cli.sh` |
 | Open a terminal in a container (defaults to the PHP box) | `pod-login [container]` |
+| Install / remove the SSH login helper banner | `sudo bash scripts/install-login-help.sh [--remove]` |
 | Re-apply host packages / Starship prompt / swap | `sudo bash scripts/host-setup.sh` |
 | See the full architecture & rebuild plan | [`PODMAN_PLAN.md`](PODMAN_PLAN.md) |
 
@@ -153,6 +154,15 @@ pod-restart --all         # restart the whole stack
 the web root (`~/www` -> `/var/www`) and runs under `sudo` automatically; it
 defaults to `php-fpm` because that is where the PHP tooling (and the site files)
 live.
+
+**The same list is shown every time you log in over SSH.** `deploy.sh` installs
+`/etc/update-motd.d/99-server-setup`, which Ubuntu's `pam_motd` prints on
+interactive logins. Re-install or remove it with:
+
+```bash
+sudo bash scripts/install-login-help.sh            # (re)install the banner
+sudo bash scripts/install-login-help.sh --remove   # remove it
+```
 
 ## Where the site files live
 
