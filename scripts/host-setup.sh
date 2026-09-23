@@ -60,6 +60,17 @@ enabled = true
 EOF
 systemctl enable --now fail2ban 2>/dev/null || true
 
+# Reboot automatically only when an update requires it (kernel/libc/etc.), at
+# 03:30; also clean up superseded kernels and auto-installed dependencies.
+echo "==> unattended-upgrades: auto-reboot when required"
+cat > /etc/apt/apt.conf.d/99-server-setup-autoreboot <<'EOF'
+// Managed by server-setup (scripts/host-setup.sh).
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "03:30";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+EOF
+
 echo "==> creating bind-mount directories"
 mkdir -p /var/databases /var/cache/nginx /var/log/nginx
 

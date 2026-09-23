@@ -108,6 +108,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 |---|---|
 | Everything (menu: deploy, add a site, backup, restore, certs...) | `sudo ./install/setup.sh` |
 | Deploy / update the stack (no menu) | `sudo bash scripts/deploy.sh` (refreshes files from the tarball, keeps `.env`) |
+| Refresh images + container OS packages (no data changes) | `sudo bash scripts/update.sh` (weekly `server-update.timer`) |
 | Add a site (no menu) | `sudo bash scripts/new-site.sh <domain> <type>` |
 | Back up | `sudo bash scripts/backup.sh` |
 | Restore from backup | `sudo bash scripts/restore.sh` |
@@ -163,6 +164,20 @@ interactive logins. Re-install or remove it with:
 sudo bash scripts/install-login-help.sh            # (re)install the banner
 sudo bash scripts/install-login-help.sh --remove   # remove it
 ```
+
+### Automatic updates
+
+* **Host OS:** `unattended-upgrades` installs all Ubuntu 26.04 updates daily
+  (including security/ESM). If an update needs a reboot, the box reboots itself
+  at **03:30** (`/etc/apt/apt.conf.d/99-server-setup-autoreboot`), and superseded
+  kernels + auto-installed dependencies are cleaned up.
+* **Containers:** nothing updates the images by itself — `compose up` reuses the
+  local image. `server-update.timer` runs `scripts/update.sh` weekly (Sun 04:00,
+  up to 30 min staggered) to pull the upstream images
+  (`mariadb`/`valkey`/`open-webui`/`certbot`) and rebuild `php`/`nginx`/`node`,
+  which re-runs `apt` so the Ubuntu packages *inside* the images are updated.
+  It does **not** re-provision sites, so site data is untouched. Logs:
+  `/var/log/server-setup/update.log`.
 
 ## Where the site files live
 

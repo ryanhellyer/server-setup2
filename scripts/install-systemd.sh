@@ -9,8 +9,8 @@
 # adds ordering so nginx starts after the FPM socket provider (php-fpm).
 #
 # It also installs systemd timers for the scheduled jobs: `server-backup.timer`
-# (nightly 03:00) and `certbot-renew.timer` (2x/day), so backups + TLS renewal
-# happen automatically.
+# (nightly 03:00), `certbot-renew.timer` (2x/day) and `server-update.timer`
+# (weekly), so backups, TLS renewal and image/OS updates happen automatically.
 #
 # Re-run anytime (idempotent) — e.g. after `compose up` recreates a container.
 # =============================================================================
@@ -108,9 +108,19 @@ write_job "certbot-renew" \
   "run the server-setup TLS certificate renewal" \
   "*-*-* 00,12:00:00" "30m"
 
-echo "==> Enabling scheduled jobs (nightly backup + TLS renewal)"
+# Weekly image/OS refresh: pull upstream images + rebuild the local ones
+# (which re-runs apt, updating the Ubuntu packages inside the containers) and
+# recreate anything changed. Sunday 04:00, staggered up to 30 min. This does
+# NOT run provisioning, so site data is untouched.
+write_job "server-update" \
+  "server-setup weekly image update" \
+  "/bin/bash $PWD/scripts/update.sh" \
+  "pull/build/recreate the stack weekly" \
+  "Sun *-*-* 04:00:00" "30m"
+
+echo "==> Enabling scheduled jobs (nightly backup + TLS renewal + weekly update)"
 systemctl daemon-reload
-systemctl enable --now server-backup.timer certbot-renew.timer
+systemctl enable --now server-backup.timer certbot-renew.timer server-update.timer
 
 echo
 echo "Systemd units installed and enabled. The stack will start at boot:"
