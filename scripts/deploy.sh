@@ -242,6 +242,18 @@ echo "==> apply web-dir permissions (ryan:www-data)"
 # self-signed placeholder in place). Recreate every referenced log dir.
 ensure_nginx_log_dirs
 
+# ---- 9c-ii. clear PHP OPcache so provisioning's config rewrites take effect ----
+# opcache.validate_timestamps=0 (php/10-opcache.ini), so FPM keeps executing the
+# wp-config.php / .env it cached when it started — including the pre-migration
+# DB password. Provisioning rewrites those files, so without a reload WordPress
+# reports "Error establishing a database connection". SIGUSR2 clears OPcache
+# gracefully (no downtime).
+if podman container exists "$CONTAINER_PHP_FPM" 2>/dev/null; then
+  echo "==> reloading php-fpm (clear OPcache after provisioning)"
+  podman exec "$CONTAINER_PHP_FPM" sh -c 'php-fpm8.5 -t && kill -USR2 1' \
+    || echo "  (reload failed — run: sudo podman restart php-fpm)"
+fi
+
 # ---- 9d. host CLI wrappers for the admin user ----
 # php/composer/mariadb/... + pod-login (interactive shell) into ~/.local/bin.
 # Idempotent; catches servers installed before this step existed.

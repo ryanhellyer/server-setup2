@@ -191,6 +191,14 @@ images):
 * `sudo bash scripts/fix-perms.sh` re-applies ownership/modes (idempotent, run
   automatically by `deploy.sh` and `new-site.sh`; re-run after `restore.sh`).
 
+> **Edited a PHP file on the host and nothing changed?** OPcache has
+> `validate_timestamps = 0` (`php/10-opcache.ini`), so PHP-FPM keeps running the
+> version it compiled when it started — edits (including `wp-config.php` DB
+> credentials) are invisible until you clear it: `php-reload` (graceful) or
+> `sudo podman restart php-fpm`. `deploy.sh` does this automatically after
+> provisioning. A stale `wp-config.php` shows up as WordPress's "Error
+> establishing a database connection" even when the DB is fine.
+
 ## Remote storage (snapshots, DB dumps)
 
 Snapshots of the old `/var/www`, the weekly DB dumps and the Open WebUI data
