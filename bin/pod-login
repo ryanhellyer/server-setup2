@@ -21,8 +21,6 @@ SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
 source "$REPO_DIR/scripts/lib-containers.sh"
 source "$REPO_DIR/scripts/lib-paths.sh"
-[ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a
-WWW_ROOT="$(resolve_www_root)"
 
 usage() {
   cat <<EOF
@@ -42,10 +40,15 @@ for arg in "$@"; do
 done
 
 # The stack runs rootful podman, so a shell in a container needs root. Re-exec
-# under sudo like the other admin scripts (the admin user has NOPASSWD).
+# under sudo like the other admin scripts (the admin user has NOPASSWD). Don't
+# pass -E: sudo ignores it here, and .env is (re)read below as root anyway.
 if [ "$(id -u)" -ne 0 ]; then
-  exec sudo -E "$SELF" "$@"
+  exec sudo "$SELF" "$@"
 fi
+
+# Now root: load .env (root-only) and resolve the host web root for cwd mirroring.
+[ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a
+WWW_ROOT="$(resolve_www_root)"
 
 CONTAINER=""
 LOGIN_USER="root"

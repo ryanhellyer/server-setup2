@@ -33,7 +33,7 @@ done
 
 # Rootful podman -> root (auto-sudo like the other admin scripts).
 if [ "$(id -u)" -ne 0 ]; then
-  exec sudo -E "$SELF" "$@"
+  exec sudo "$SELF" "$@"
 fi
 
 CONTAINER=""
