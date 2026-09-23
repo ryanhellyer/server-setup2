@@ -39,6 +39,9 @@ RUN apt-get update \
         zip \
         unzip \
         sqlite3 \
+        # Editing convenience: site files are bind-mounted at /var/www, and a
+        # shell in this container now has an editor to hand (pod-login).
+        nano \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
