@@ -243,11 +243,10 @@ echo "==> apply web-dir permissions (ryan:www-data)"
 ensure_nginx_log_dirs
 
 # ---- 9c-ii. clear PHP OPcache so provisioning's config rewrites take effect ----
-# opcache.validate_timestamps=0 (php/10-opcache.ini), so FPM keeps executing the
-# wp-config.php / .env it cached when it started — including the pre-migration
-# DB password. Provisioning rewrites those files, so without a reload WordPress
-# reports "Error establishing a database connection". SIGUSR2 clears OPcache
-# gracefully (no downtime).
+# Provisioning rewrites wp-config.php / .env after FPM has started. They'd be
+# picked up within revalidate_freq (10s) anyway, but reload now so the new DB
+# credentials are live immediately (and so a config with
+# validate_timestamps=0 still works). SIGUSR2 clears OPcache gracefully.
 if podman container exists "$CONTAINER_PHP_FPM" 2>/dev/null; then
   echo "==> reloading php-fpm (clear OPcache after provisioning)"
   podman exec "$CONTAINER_PHP_FPM" sh -c 'php-fpm8.5 -t && kill -USR2 1' \
