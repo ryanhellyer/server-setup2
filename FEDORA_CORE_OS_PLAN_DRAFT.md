@@ -62,8 +62,8 @@ can supply `rsync`, `python3`, `openssl`, `ssh`, etc. on demand.
 3. **Optional interactive sugar.** A `command_not_found_handle` pointing at the
    same tools container, for humans at a prompt only (§6.4).
 4. **Paths are mounted, not translated, for scripts.** Mount host directories at
-   **identical paths** inside the tools container (`/opt/server-setup` →
-   `/opt/server-setup`, `/home/ryan` → `/home/ryan`). Then an absolute host path
+   **identical paths** inside the tools container (`/home/ryan/server-setup` →
+   `/home/ryan/server-setup`, `/home/ryan` → `/home/ryan`). Then an absolute host path
    is valid unchanged, and the whole class of translation bugs disappears.
    A configurable translation map still exists so a Bluefin-style
    `$HOME → /workspace` layout can be supported for interactive use (§5.3).
@@ -77,7 +77,7 @@ can supply `rsync`, `python3`, `openssl`, `ssh`, etc. on demand.
 ```
 Fedora CoreOS host  (pristine: podman + systemd + firewalld only)
   |
-  |-- /opt/server-setup            repo (persists: /opt -> /var/opt on FCOS)
+  |-- /home/ryan/server-setup      repo (persists: on the home partition)
   |-- /home/ryan/www               web root (persists)
   |-- /var/lib/mysql               MariaDB data (persists)
   |

@@ -291,10 +291,10 @@ curl -fsSL https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/in
 
 ```bash
 sudo ./scripts/host-setup.sh           # one-time: packages + dirs + swap
-mkdir -p /opt/server-setup
+mkdir -p ~/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
-  tar -xz --strip-components=1 -C /opt/server-setup
-cd /opt/server-setup
+  tar -xz --strip-components=1 -C ~/server-setup
+cd ~/server-setup
 cp .env.example .env                     # fill secrets, DEPLOY_ENV=production
 # apply Hetzner sshfs mounts (fstab / automount)
 sudo ./install/setup.sh                   # menu: pick "Full install / deploy / update"
@@ -330,19 +330,20 @@ Stepped equivalent:
 
 ```bash
 sudo ./scripts/host-setup.sh
-mkdir -p /opt/server-setup
+mkdir -p ~/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
-  tar -xz --strip-components=1 -C /opt/server-setup
-cd /opt/server-setup
+  tar -xz --strip-components=1 -C ~/server-setup
+cd ~/server-setup
 cp .env.example .env                     # keep DEPLOY_ENV=test
 sudo ./install/setup.sh                   # menu: pick "Full install / deploy / update"
 sudo ./scripts/test-site.sh              # scaffold the ionos.hellyer.kiwi test page
 # point DNS ionos.hellyer.kiwi at this box, then open https://ionos.hellyer.kiwi
 ```
 
-The repo lives at **`/opt/server-setup`** — a stable path outside `/home`, so the
-systemd units (`scripts/install-systemd.sh`) and CLI wrappers (`bin/pod-exec`)
-keep resolving correctly across reboots and user sessions.
+The repo lives at **`~/server-setup`** (e.g. `/home/ryan/server-setup`) — inside
+the admin user's home, on the persistent home partition, so it survives an OS
+reinstall and keeps the systemd units (`scripts/install-systemd.sh`) and CLI
+wrappers (`bin/pod-exec`) resolving correctly across reboots and sessions.
 
 In test mode the box is lightweight by design:
 

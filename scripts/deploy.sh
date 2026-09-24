@@ -168,6 +168,15 @@ else
   echo "  (local checkout — deploying what's here)"
 fi
 
+# The repo lives in the admin user's home (~/server-setup). A refresh extracts
+# as root, which would leave root-owned files in their home — keep it owned by
+# the admin user. (Only when the repo is directly under that home.)
+_admin_user="$(resolve_admin_user)"
+_admin_home="$(resolve_admin_home)"
+if [ -n "$_admin_home" ] && [ "$(dirname "$PWD")" = "$_admin_home" ]; then
+  chown -R "$_admin_user:$(id -gn "$_admin_user")" "$PWD" 2>/dev/null || true
+fi
+
 # The running copy of deploy.sh is one version behind what we just extracted.
 # Re-exec the freshly-downloaded deploy.sh so the LATEST logic runs this
 # invocation (DEPLOY_REEXEC guards against a loop; the .last-sha match makes

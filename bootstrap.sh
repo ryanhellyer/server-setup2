@@ -8,7 +8,8 @@
 #   3. Creates the admin user (default 'ryan') with your key + passwordless sudo.
 #   4. Hardens sshd — disables password auth (root left reachable by key only).
 #   5. Runs the installer: the fresh-host one-liner, or the on-server menu if the
-#      repo is already at /opt/server-setup. The menu gives full remote control.
+#      repo is already in the admin user's home (~/server-setup). The menu gives
+#      full remote control.
 #
 #   ./bootstrap.sh --host 203.0.113.10
 #   ./bootstrap.sh --host box.example.com --user root --admin-user ryan
@@ -45,7 +46,8 @@ IDENTITY=""
 DO_INSTALL=0
 DO_HARDEN=1
 SETUP_URL="https://raw.githubusercontent.com/ryanhellyer/server-setup2/master/install/setup.sh"
-INSTALL_DIR="/opt/server-setup"
+# INSTALL_DIR is resolved after option parsing (it depends on --admin-user).
+INSTALL_DIR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -60,6 +62,9 @@ while [ $# -gt 0 ]; do
     *) die "Unknown argument: $1 (try --help)" ;;
   esac
 done
+
+# The repo installs into the admin user's home (~/server-setup), not /opt.
+INSTALL_DIR="${SERVER_SETUP_DIR:-/home/$ADMIN_USER/server-setup}"
 
 [ -f "$REPO_DIR/scripts/create-admin-user.sh" ] || die "Run this from the repo root."
 [ -f "$REPO_DIR/scripts/harden-sshd.sh" ] || die "Run this from the repo root."
@@ -204,11 +209,11 @@ fi
 if [ "$DO_INSTALL" -eq 1 ] || ! run_ssh "$TARGET" "test -x $INSTALL_DIR/scripts/deploy.sh" >/dev/null 2>&1; then
   say "Installing server-setup on $HOST"
   if run_ssh "$TARGET" 'command -v curl >/dev/null 2>&1'; then
-    run_ssh_t "$TARGET" "curl -fsSL '$SETUP_URL' -o /tmp/setup.sh && ${SUDO}bash /tmp/setup.sh"
+    run_ssh_t "$TARGET" "curl -fsSL '$SETUP_URL' -o /tmp/setup.sh && ${SUDO}env SERVER_SETUP_ADMIN_USER='$ADMIN_USER' bash /tmp/setup.sh"
   else
     warn "curl not found on the server — copying install/setup.sh over instead."
     scp "${SCP_OPTS[@]}" "$REPO_DIR/install/setup.sh" "$TARGET:/tmp/setup.sh"
-    run_ssh_t "$TARGET" "${SUDO}bash /tmp/setup.sh"
+    run_ssh_t "$TARGET" "${SUDO}env SERVER_SETUP_ADMIN_USER='$ADMIN_USER' bash /tmp/setup.sh"
   fi
 else
   say "Opening the server-setup menu on $HOST"

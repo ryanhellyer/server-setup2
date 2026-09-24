@@ -209,7 +209,7 @@ Storage-only comparison for the bulk data, because that is where the money is:
 
 - It is now **irreplaceable on price**: 10 vCore, 16 GB, 512 GB NVMe for ~€13.41/mo incl. VAT. The closest currently orderable Netcup plan with your RAM (VPS 2000 G12.5) gives **half the disk for ~1.7–2.3× the price**; the one with your disk (VPS 4000 G12.5) costs **~3×**.
 - **Do not cancel and re-order**, and **do not upgrade** to a G12.5 plan expecting better value — there is no cross-generation upgrade, and the new tiers are worse.
-- Because the container stack is designed to be rebuilt from scratch on any host, you can perform the migration **on this server** (install to `/opt/server-setup`, restore from the Storage Box, cut DNS over) rather than moving to a new one. If you want a staging box for a risk-free cutover, use a cheap temporary VPS (Contabo/IONOS promo) and leave production on the legacy contract.
+- Because the container stack is designed to be rebuilt from scratch on any host, you can perform the migration **on this server** (install to `~/server-setup`, restore from the Storage Box, cut DNS over) rather than moving to a new one. If you want a staging box for a risk-free cutover, use a cheap temporary VPS (Contabo/IONOS promo) and leave production on the legacy contract.
 - The console UX complaint is a real annoyance, but it is not worth paying 2–4× to escape.
 - Optional housekeeping: confirm your current renewal price (the May 2026 +18.51% adjustment may apply), and add swap as part of the rebuild.
 

@@ -67,7 +67,7 @@ What it does, in order:
    prohibit-password` (`scripts/harden-sshd.sh`). It refuses to run unless a key
    is already installed for `root` or `ryan`, so it can't lock you out.
 4. Runs the installer: the fresh-host bootstrap on a new box, or the on-server
-   menu if the repo is already at `/opt/server-setup`.
+   menu if the repo is already in the admin user's home (`~/server-setup`).
 
 Flags: `--user`, `--admin-user`, `--port`, `--identity`, `--install`,
 `--no-harden`. The password is entered by `ssh` and never stored.
@@ -96,10 +96,10 @@ menu that delegates to the scripts in `scripts/`:
 
 ```bash
 sudo ./scripts/host-setup.sh          # one-time host setup (packages + dirs + swap)
-mkdir -p /opt/server-setup
+mkdir -p ~/server-setup
 curl -fsSL https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz | \
-  tar -xz --strip-components=1 -C /opt/server-setup
-cd /opt/server-setup
+  tar -xz --strip-components=1 -C ~/server-setup
+cd ~/server-setup
 cp .env.example .env      # scripts/deploy.sh does this (with generated secrets) automatically
 sudo ./install/setup.sh                 # menu: pick "Full install / deploy / update"
 ```

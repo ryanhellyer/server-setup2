@@ -12,15 +12,16 @@
 #   * FRESH HOST (no repo installed — the curl|bash one-liner above):
 #       1. Installs the host packages (podman, podman-compose, curl, openssl, nano...).
 #       2. Downloads this whole repo as a tarball from GitHub (public repo — no
-#          SSH keys needed) into /opt/server-setup and writes a .tarball marker
-#          so deploy.sh can refresh the files the same way later.
+#          SSH keys needed) into the admin user's home (~/server-setup, e.g.
+#          /home/ryan/server-setup) and writes a .tarball marker so deploy.sh can
+#          refresh the files the same way later.
 #       3. Creates an admin user 'ryan' — key-based, with passwordless
 #          sudo (scripts/create-admin-user.sh). SERVER_SETUP_ADMIN_KEY supplies
 #          the caller's key when run via bootstrap.sh.
 #       4. Re-execs the installed copy, which presents the menu.
 #
 #   * INSTALLED SERVER (repo found in the parent of this script's dir, or in
-#     /opt/server-setup): Presents an interactive menu; each option delegates to
+#     ~/server-setup): Presents an interactive menu; each option delegates to
 #     a script in scripts/ (sudo added only where the target needs root).
 #
 # Menu options delegate to existing scripts, so the automation path is unchanged:
@@ -37,10 +38,18 @@ ok()  { printf '\033[1;32m[ok]\033[0m %s\n' "$*"; }
 # Read from /dev/tty so prompts work even when piped in via curl | bash.
 tty_read() { read -r "$1" < /dev/tty || true; }
 
+# Admin user + install dir. The repo lives in the ADMIN USER'S HOME
+# (~/server-setup, e.g. /home/ryan/server-setup) rather than /opt, so it sits on
+# the persistent home partition (friendlier to atomic/immutable distros, where
+# /opt is best left to the OS). Override with SERVER_SETUP_ADMIN_USER /
+# SERVER_SETUP_DIR.
+ADMIN_USER="${SERVER_SETUP_ADMIN_USER:-ryan}"
+INSTALL_DIR="${SERVER_SETUP_DIR:-/home/$ADMIN_USER/server-setup}"
+
 # ---- locate the repo: the parent of this script's dir, else the install dir ----
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-if [ ! -x "$REPO_DIR/scripts/deploy.sh" ] && [ -x /opt/server-setup/scripts/deploy.sh ]; then
-  REPO_DIR="/opt/server-setup"
+if [ ! -x "$REPO_DIR/scripts/deploy.sh" ] && [ -x "$INSTALL_DIR/scripts/deploy.sh" ]; then
+  REPO_DIR="$INSTALL_DIR"
 fi
 
 # =============================================================================
@@ -72,7 +81,7 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
   ok "Fetch tools installed."
 
   # ---- download the files (no git, no keys) ----
-  REPO_DIR="/opt/server-setup"
+  REPO_DIR="$INSTALL_DIR"
   TARBALL_URL="${SERVER_SETUP_TARBALL:-https://github.com/ryanhellyer/server-setup2/archive/refs/heads/master.tar.gz}"
   say "Downloading the server-setup files from GitHub"
   mkdir -p "$REPO_DIR"
@@ -110,17 +119,29 @@ if [ ! -x "$REPO_DIR/scripts/deploy.sh" ]; then
     rm -rf "$REPO_DIR/.git"
   fi
 
-  # ---- admin user 'ryan' (shared with bootstrap.sh) ----
+  # ---- admin user (shared with bootstrap.sh) ----
   # SERVER_SETUP_ADMIN_KEY lets a remote caller (bootstrap.sh) supply the
   # caller's own key. Fallback: the maintainer's key, so a bare `curl | bash`
   # install still ends up with passwordless SSH. No password is set on the
   # account — access is key-only, with passwordless sudo. Always done (no
   # prompt): a fresh host must have the admin user + key.
   DEFAULT_ADMIN_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEheqtRv6dkhK3KNjuCwxfKDgvZAEzNcnBt7fL/XQWGX ryanhellyer@gmail.com'
-  ADMIN_USER=ryan \
+  ADMIN_USER="$ADMIN_USER" \
     ADMIN_KEY="${SERVER_SETUP_ADMIN_KEY:-$DEFAULT_ADMIN_KEY}" \
     bash "$REPO_DIR/scripts/create-admin-user.sh"
-  ok "Admin user 'ryan' ready (key-based, passwordless sudo)."
+  ok "Admin user '$ADMIN_USER' ready (key-based, passwordless sudo)."
+
+  # The tarball was extracted as root BEFORE the admin user existed, and
+  # `useradd -m` does not chown a home directory that already exists (it only
+  # warns) — so make sure the admin user owns their home and the install dir.
+  ADMIN_HOME="$(getent passwd "$ADMIN_USER" | cut -d: -f6)"
+  ADMIN_GROUP="$(id -gn "$ADMIN_USER")"
+  if [ -n "$ADMIN_HOME" ]; then
+    if [ "$(dirname "$REPO_DIR")" = "$ADMIN_HOME" ]; then
+      chown "$ADMIN_USER:$ADMIN_GROUP" "$ADMIN_HOME"
+    fi
+    chown -R "$ADMIN_USER:$ADMIN_GROUP" "$REPO_DIR"
+  fi
 
   # ---- full host setup: packages + bind-mount dirs + swap ----
   # (delegates to host-setup.sh so the package list lives in ONE place; also
