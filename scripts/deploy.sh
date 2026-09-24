@@ -226,6 +226,24 @@ podman run --rm \
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
+# ---- 9a. let the podman networks through ufw ----
+# ufw's default-deny blocks netavark DNS (container->container name resolution)
+# and container->published-port traffic, which makes WordPress/Laravel hang on
+# "Error establishing a database connection" / resolution timeouts. Allow the
+# project's networks for input + routed traffic. Subnets are discovered from
+# podman, so this works whatever was assigned. Must run AFTER compose up (the
+# networks don't exist before).
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
+  for net in $(podman network ls --format '{{.Name}}' | grep -E '^server-setup' || true); do
+    for sub in $(podman network inspect "$net" --format '{{range .Subnets}}{{.Subnet}} {{end}}' 2>/dev/null); do
+      [ -n "$sub" ] || continue
+      ufw allow from "$sub"       >/dev/null 2>&1 || true
+      ufw route allow from "$sub" >/dev/null 2>&1 || true
+    done
+  done
+  echo "==> ufw: allowed the podman network subnets (input + routed)"
+fi
+
 # ---- 9b. web-dir ownership + permissions (ryan:www-data, setgid) ----
 # Idempotent; also catches a server that predates this step.
 echo "==> apply web-dir permissions (ryan:www-data)"

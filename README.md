@@ -179,6 +179,15 @@ sudo bash scripts/install-login-help.sh --remove   # remove it
   It does **not** re-provision sites, so site data is untouched. Logs:
   `/var/log/server-setup/update.log`.
 
+### Firewall (ufw) and the containers
+
+`deploy.sh` enables ufw (allowing 22/80/443) and then allows the podman network
+subnets for **input and routed** traffic. Without that, ufw's default-deny
+blocks the netavark DNS, so containers can't resolve `mariadb`/`valkey`/
+`open-webui` and the sites hang (WordPress: "Error establishing a database
+connection"; Laravel: name-resolution timeouts). The subnets are discovered via
+`podman network inspect`, so it adapts to whatever podman assigns.
+
 ### Open WebUI resilience
 
 `chat.hellyer.kiwi` keeps its SQLite DB on the shared volume. The container has
