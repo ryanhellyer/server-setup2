@@ -66,7 +66,7 @@ StartLimitBurst=5
 [Service]
 Restart=on-failure
 CPUQuota=100%
-MemoryMax=1G
+MemoryMax=1536M
 EOF
 
 systemctl daemon-reload

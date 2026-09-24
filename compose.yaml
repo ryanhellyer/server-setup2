@@ -74,7 +74,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 1g
+          memory: 1536m
 
   mariadb:
     image: docker.io/mariadb:11

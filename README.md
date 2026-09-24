@@ -183,7 +183,7 @@ sudo bash scripts/install-login-help.sh --remove   # remove it
 
 `chat.hellyer.kiwi` keeps its SQLite DB on the shared volume. The container has
 **no podman restart policy** — systemd supervises it with a bounded restart
-(`StartLimitBurst=5`) and `CPUQuota=100%` / `MemoryMax=1G`
+(`StartLimitBurst=5`) and `CPUQuota=100%` / `MemoryMax=1536M`
 (`scripts/install-systemd.sh`), so a crash-looping app can't peg a core or spin
 forever. `scripts/provision-openwebui.sh` runs `PRAGMA integrity_check` on the
 restored `webui.db` and moves a corrupt one aside (Open WebUI then rebuilds a
