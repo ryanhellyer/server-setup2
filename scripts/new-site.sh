@@ -27,6 +27,7 @@ source scripts/lib-containers.sh
 source scripts/lib-paths.sh
 source scripts/lib-db.sh
 WWW_ROOT="$(resolve_www_root)"
+LOG_ROOT="$(resolve_log_root)"
 
 usage() {
   echo "Usage: $0 <domain> <type> [target]"
@@ -125,15 +126,15 @@ with open(filepath, "w") as fh:
 print("  -> edited %s" % filepath)
 PY
 
-# ---- 2. Create web root + logs (host path; config keeps the /var/www path) ----
+# ---- 2. Create web root + logs (host paths; config uses /var/www + /var/log/sites) ----
 case "$TYPE" in
   laravel|static)   ROOT="$WWW_ROOT/$DOMAIN/public" ;;
   static-spa)       ROOT="$WWW_ROOT/$DOMAIN/public_html" ;;
   *)                ROOT="" ;;
 esac
 if [ -n "$ROOT" ]; then
-  mkdir -p "$ROOT" "$WWW_ROOT/$DOMAIN/logs"
-  echo "  -> created $ROOT and $WWW_ROOT/$DOMAIN/logs"
+  mkdir -p "$ROOT" "$LOG_ROOT/$DOMAIN"
+  echo "  -> created $ROOT and $LOG_ROOT/$DOMAIN"
   "$PWD/scripts/fix-perms.sh" "$WWW_ROOT/$DOMAIN"
 fi
 

@@ -19,14 +19,17 @@
 # =============================================================================
 
 # Create the host-side parent directory of every access_log/error_log path the
-# nginx config references. Paths are container paths (/var/www/...) mapped back
-# to the host web root via www_host_path.
+# nginx config references. Paths are container paths (/var/www/... and
+# /var/log/sites/...) mapped back to their host location via www_host_path.
+# Matches any absolute *.log path (not just access_log/error_log directives),
+# because per-site paths can also come from a `map` (e.g. php-site.conf's
+# $site_access_log), and those are opened at request time — a missing dir means
+# the log write silently fails.
 ensure_nginx_log_dirs() {
   local dirs d
-  dirs="$( { grep -rhoE '^[[:space:]]*(access_log|error_log)[[:space:]]+[^;]+;' \
-              nginx/nginx.conf nginx/conf.d nginx/snippets 2>/dev/null; } \
-    | sed -E 's/^[[:space:]]*(access_log|error_log)[[:space:]]+([^ ]+).*/\2/' \
-    | grep '^/' | xargs -r -n1 dirname | sort -u || true )"
+  dirs="$( { grep -rhvE '^[[:space:]]*#' nginx/nginx.conf nginx/conf.d nginx/snippets 2>/dev/null; } \
+    | grep -oE '/[A-Za-z0-9._/-]+\.log' \
+    | xargs -r -n1 dirname | sort -u || true )"
 
   while IFS= read -r d; do
     [ -n "$d" ] || continue

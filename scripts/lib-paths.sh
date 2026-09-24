@@ -21,6 +21,9 @@
 # Path as seen INSIDE the containers. Must match compose.yaml's mount target and
 # the roots referenced by nginx/conf.d. Do not change without editing those.
 CONTAINER_WWW="/var/www"
+# Per-site nginx logs live OUTSIDE the web roots (so they are never part of a
+# site backup or snapshot). compose.yaml mounts $LOG_ROOT here.
+CONTAINER_LOG="/var/log/sites"
 
 # Print the admin user (the account whose home holds the site files). Resolved
 # from $SUDO_USER, then ryan, then the current user.
@@ -47,6 +50,14 @@ resolve_www_root() {
   printf '%s' "$(resolve_admin_home)/www"
 }
 
+# Print the host log root — per-site nginx logs, kept OUTSIDE the web roots so
+# they are not swept into site backups/snapshots. Precedence: $LOG_ROOT (from
+# .env) > the admin user's home (~/logs).
+resolve_log_root() {
+  if [ -n "${LOG_ROOT:-}" ]; then printf '%s' "$LOG_ROOT"; return 0; fi
+  printf '%s' "$(resolve_admin_home)/logs"
+}
+
 # Print the host tools root — everything from the storage snapshot that is NOT a
 # website (backup scripts, configs, cron, misc data). Precedence: $TOOLS_ROOT
 # (from .env) > the admin user's home (~/tools).
@@ -55,13 +66,15 @@ resolve_tools_root() {
   printf '%s' "$(resolve_admin_home)/tools"
 }
 
-# Map a container path (/var/www[/...]) to its host location ($WWW_ROOT[...]).
-# Non-/var/www paths are returned unchanged.
+# Map a container path (/var/www[/...] or /var/log/sites[/...]) to its host
+# location ($WWW_ROOT[...] / $LOG_ROOT[...]). Other paths are returned unchanged.
 www_host_path() {
   local p="$1"
   case "$p" in
-    "$CONTAINER_WWW")   printf '%s' "$WWW_ROOT" ;;
-    "$CONTAINER_WWW"/*) printf '%s/%s' "$WWW_ROOT" "${p#"$CONTAINER_WWW"/}" ;;
+    "$CONTAINER_WWW")   printf '%s' "${WWW_ROOT:-$(resolve_www_root)}" ;;
+    "$CONTAINER_WWW"/*) printf '%s/%s' "${WWW_ROOT:-$(resolve_www_root)}" "${p#"$CONTAINER_WWW"/}" ;;
+    "$CONTAINER_LOG")   printf '%s' "${LOG_ROOT:-$(resolve_log_root)}" ;;
+    "$CONTAINER_LOG"/*) printf '%s/%s' "${LOG_ROOT:-$(resolve_log_root)}" "${p#"$CONTAINER_LOG"/}" ;;
     *)                  printf '%s' "$p" ;;
   esac
 }

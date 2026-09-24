@@ -241,6 +241,26 @@ images):
 > provisioning. (A stale `wp-config.php` otherwise shows up as WordPress's
 > "Error establishing a database connection" even when the DB is fine.)
 
+## Logs
+
+Per-site nginx logs live in the **admin user's home** — `~/logs/<site>/`
+(`access.log`, `error.log`) — **outside** the web roots, so a site backup or
+snapshot never includes them. Override in `.env` with `LOG_ROOT`.
+
+The containers see them at **`/var/log/sites`** (`compose.yaml` mounts
+`${LOG_ROOT:-/home/ryan/logs}:/var/log/sites`); the per-site nginx configs
+(`nginx/conf.d/wordpress-multisite.conf`, `secure-site.conf`, `php-site.conf`)
+point their logs there. Shared/global nginx logs stay under `/var/log/nginx`.
+
+`server-logs.timer` runs `logrotate` **hourly** against
+`/etc/logrotate-server-setup.conf`: `daily` + `maxsize 50M` + `rotate 14` +
+`compress`, so a normal day rotates once while a runaway log is cut as soon as
+it passes 50M. Rotation recreates the file and signals nginx to reopen it
+(`podman exec nginx nginx -s reopen`).
+
+> Application-level logs (e.g. Laravel's `storage/logs/`) are **not** managed
+> here — only the nginx per-site logs.
+
 ## Remote storage (snapshots, DB dumps)
 
 Snapshots of the old `/var/www`, the weekly DB dumps and the Open WebUI data
@@ -374,8 +394,10 @@ install/deploy:
 |---|---|---|
 | Nightly backup | daily 03:00 | `scripts/backup.sh` |
 | TLS renewal | 2×/day (renews only when <30 days left) | `scripts/certbot-issue.sh` |
+| Weekly image update | Sun 04:00 | `scripts/update.sh` |
+| Log rotation | hourly (caps per-site logs at 50M) | `logrotate /etc/logrotate-server-setup.conf` |
 
-Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer'`.
+Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer'`.
 
 > **Note:** `scripts/backup.sh` is a **work in progress** — it's a simple
 > "mysqldump everything + tar `~/www`" script and needs upgrading to match

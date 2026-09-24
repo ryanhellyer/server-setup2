@@ -102,6 +102,13 @@ mkdir -p "$WWW_ROOT"
 export WWW_ROOT   # so `podman compose` mounts the same path
 echo "==> Web root (host): $WWW_ROOT  (containers see it as $CONTAINER_WWW)"
 
+# Per-site nginx logs live outside the web roots (~/logs), mounted at
+# /var/log/sites, so site backups/snapshots never include them.
+LOG_ROOT="$(resolve_log_root)"
+mkdir -p "$LOG_ROOT"
+export LOG_ROOT   # so `podman compose` mounts the same path
+echo "==> Log root (host): $LOG_ROOT  (containers see it as $CONTAINER_LOG)"
+
 # ---- 3. refresh files ----
 # Tarball install (.tarball marker) -> re-download. Git clone -> git pull.
 # Plain copied checkout -> deploy as-is.
@@ -226,6 +233,7 @@ podman run --rm \
   -v "$PWD/nginx:/etc/nginx:ro" \
   -v "$PWD/env/letsencrypt:/etc/letsencrypt:ro" \
   -v "$WWW_ROOT:/var/www" \
+  -v "$LOG_ROOT:/var/log/sites" \
   "$IMAGE_ID" nginx -t
 
 # ---- 9. compose up ----

@@ -14,6 +14,7 @@ cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && source .env && set +a
 source scripts/lib-paths.sh
 WWW_ROOT="$(resolve_www_root)"
+LOG_ROOT="$(resolve_log_root)"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -33,6 +34,7 @@ apt-get install -y \
   sshfs \
   ufw \
   fail2ban \
+  logrotate \
   unattended-upgrades \
   nano
 
@@ -84,6 +86,15 @@ else
   install -d -g "$WWW_GROUP" -m 2775 "$WWW_ROOT"
 fi
 echo "==> web root: $WWW_ROOT (owner ryan:$WWW_GROUP, setgid)"
+
+# Per-site nginx logs live here (mounted at /var/log/sites), OUTSIDE the web
+# roots so site backups/snapshots never include them. Owned like the web root.
+if id ryan >/dev/null 2>&1; then
+  install -d -o ryan -g "$WWW_GROUP" -m 2775 "$LOG_ROOT"
+else
+  install -d -g "$WWW_GROUP" -m 2775 "$LOG_ROOT"
+fi
+echo "==> log root: $LOG_ROOT (owner ryan:$WWW_GROUP, setgid)"
 
 echo "==> adding admin user to www-data group (shared web-write model)"
 if id ryan >/dev/null 2>&1; then

@@ -23,6 +23,7 @@ services:
       - ./env/letsencrypt:/etc/letsencrypt:ro
       - php-socket:/run/php:ro
       - ${WWW_ROOT:-/home/ryan/www}:/var/www
+      - ${LOG_ROOT:-/home/ryan/logs}:/var/log/sites
       - /var/log/nginx:/var/log/nginx
       - /var/cache/nginx:/var/cache/nginx
     depends_on:
