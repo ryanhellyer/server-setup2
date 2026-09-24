@@ -25,7 +25,9 @@ That one command is fully hands-off after the two prompt types below:
    password (no editor), builds the images, brings up the whole stack, installs
    systemd units + the nightly-backup/TLS-renewal timers, then **imports every
    site (files + databases, each with its own DB user) and the Open WebUI data**
-   from the newest storage snapshot.
+   from the newest storage snapshot. Anything in the snapshot that is *not* a
+   site (backup scripts, configs, cron, old copies, misc data) is copied to
+   **`~/tools`**.
 7. **Issues real TLS** for the domains in `CERTBOT_DOMAINS_FILE` (test mode: the
    test domain(s)); this needs DNS pointed at the host first.
 
@@ -117,6 +119,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Import every site + DB + Open WebUI (always fresh) | `sudo bash scripts/provision-all.sh` (auto-run by `deploy.sh`) |
 | Restore one site fully (files + DB) | `sudo bash scripts/provision-site.sh <snapshot-dir> [--to <dir>]` |
 | Restore every site found in the snapshot | `sudo bash scripts/migrate-sites.sh [--dry-run]` |
+| Copy the snapshot's non-site files (backup scripts, configs, cron) into `~/tools` | `sudo bash scripts/provision-extras.sh [--force]` |
 | Connect the storage boxes + mount `gmail`, `databases` | `sudo bash scripts/storage-mounts.sh` |
 | Create/refresh the admin user (`ryan`) with a key + passwordless sudo | `sudo bash scripts/create-admin-user.sh` |
 | Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
@@ -253,6 +256,22 @@ live on remote storage (a Hetzner Storage Box by default), described by generic
   `spam-destroyer.com=spam-destroyer.hellyer.kiwi`.
 * `DB_DUMP_DIR` — where the `<db>-<date>.sql.gz` dumps are (the `~/databases`
   mount).
+
+### Non-site files: `~/tools`
+
+Sites land in `~/www`. Everything else in the newest snapshot — `backup.sh` and
+friends, `sites.conf`, `nginx.conf`, `crontab.txt`, `configs/`, `acme/`, old
+site copies (`*OLD*`, `*BACKUP*`, `*.bak-*`) and misc data dirs — is copied into
+**`~/tools`** by `scripts/provision-extras.sh`, which `provision-all.sh` runs on
+every deploy. The copied set is the exact complement of the site list (both come
+from `lib-storage.sh:snapshot_site_dirs()`), so sites are never duplicated.
+
+The copy runs **once per snapshot**: a hidden `~/tools/.snapshot` marker records
+which snapshot was copied, so trimming `~/tools` by hand survives later deploys.
+`--force` re-copies, `EXTRAS_EXCLUDE="name1 name2"` skips entries, and
+`PROVISION_EXTRAS=0` disables the step. Files keep their permissions (so the
+backup scripts stay executable); there is no `--delete`, so it never removes
+anything locally.
 
 **One-time key authorisation:** `storage-mounts.sh` installs the key on both
 boxes (asking for each box's password once) with Hetzner's `install-ssh-key`,

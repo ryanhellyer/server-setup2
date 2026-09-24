@@ -45,23 +45,15 @@ SNAP="$(newest_snapshot)"
 export SNAPSHOT_DIR="$SNAP"   # so provision-site.sh doesn't re-discover per site
 
 # ---- collect site dirs ------------------------------------------------------
+# Discovery lives in lib-storage.sh (snapshot_site_dirs) so that
+# provision-extras.sh can copy exactly the complement into ~/tools.
 SITES=()
 if [ "$ALL" = 1 ] || [ "${#SITE_ARGS[@]}" -eq 0 ]; then
   say "Discovering sites in $STORAGE_USER@$STORAGE_HOST:$SNAP"
-  ALL_ENTRIES="$(box_ssh "ls '$SNAP/'" 2>/dev/null || true)"
-  [ -n "$ALL_ENTRIES" ] || { echo "Could not list $SNAP on the box." >&2; exit 1; }
+  box_ssh "ls '$SNAP/'" >/dev/null 2>&1 || { echo "Could not list $SNAP on the box." >&2; exit 1; }
   while IFS= read -r name; do
-    [ -n "$name" ] || continue
-    case "$name" in
-      *.sh|*.conf|*.txt|*.save|*.log|*.swp|.*) continue ;;
-      *OLD*|*BACKUP*|old-*) continue ;;
-      backups|configs|html|temp|acme|netcup|web-server|from-xps13|old-shit|words-temp|s3-metrics*|jordan-*|nz-*) continue ;;
-    esac
-    listing="$(box_ssh "ls -a '$SNAP/$name'" 2>/dev/null || true)"
-    if printf '%s\n' "$listing" | grep -qxE 'public|public_html|\.env|wp-config\.php'; then
-      SITES+=("$name")
-    fi
-  done <<< "$ALL_ENTRIES"
+    [ -n "$name" ] && SITES+=("$name")
+  done <<< "$(snapshot_site_dirs "$SNAP")"
 else
   SITES=("${SITE_ARGS[@]}")
 fi

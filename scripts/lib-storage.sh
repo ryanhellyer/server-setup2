@@ -62,6 +62,28 @@ newest_snapshot() {
   printf '%s' "$out"
 }
 
+# Print the top-level snapshot dirs that look like SITES (contain public/ or
+# public_html/ or .env or wp-config.php), applying the shared skip rules for
+# backup scripts, config dirs and old copies. One name per line.
+# This is the single source of truth for "what goes into ~/www" — the complement
+# of this list is what provision-extras.sh copies into ~/tools.
+snapshot_site_dirs() {
+  local snap="${1:-$(newest_snapshot)}" name listing
+  [ -n "$snap" ] || return 1
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    case "$name" in
+      *.sh|*.conf|*.txt|*.save|*.log|*.swp|.*) continue ;;
+      *OLD*|*BACKUP*|old-*) continue ;;
+      backups|configs|html|temp|acme|netcup|web-server|from-xps13|old-shit|words-temp|s3-metrics*|jordan-*|nz-*) continue ;;
+    esac
+    listing="$(box_ssh "ls -a '$snap/$name'" 2>/dev/null || true)"
+    if printf '%s\n' "$listing" | grep -qxE 'public|public_html|\.env|wp-config\.php'; then
+      printf '%s\n' "$name"
+    fi
+  done <<< "$(box_ssh "ls '$snap/'" 2>/dev/null || true)"
+}
+
 # Map a snapshot directory to its local directory (SNAPSHOT_RENAMES holds
 # space-separated "src=dst" pairs, e.g. "spam-destroyer.com=spam-destroyer.hellyer.kiwi").
 apply_rename() {

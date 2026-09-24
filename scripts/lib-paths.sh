@@ -22,21 +22,37 @@
 # the roots referenced by nginx/conf.d. Do not change without editing those.
 CONTAINER_WWW="/var/www"
 
+# Print the admin user (the account whose home holds the site files). Resolved
+# from $SUDO_USER, then ryan, then the current user.
+resolve_admin_user() {
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    printf '%s' "$SUDO_USER"; return 0
+  fi
+  if id ryan >/dev/null 2>&1; then printf '%s' "ryan"; return 0; fi
+  id -un
+}
+
+# Print the admin user's home directory.
+resolve_admin_home() {
+  local home
+  home="$(getent passwd "$(resolve_admin_user)" 2>/dev/null | cut -d: -f6)"
+  [ -n "$home" ] || home="${HOME:-/root}"
+  printf '%s' "$home"
+}
+
 # Print the host web root. Precedence: $WWW_ROOT (from .env) > the admin user's
-# home (~/www) resolved from $SUDO_USER, then ryan, then the current user.
+# home (~/www).
 resolve_www_root() {
   if [ -n "${WWW_ROOT:-}" ]; then printf '%s' "$WWW_ROOT"; return 0; fi
-  local user home
-  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
-    user="$SUDO_USER"
-  elif id ryan >/dev/null 2>&1; then
-    user="ryan"
-  else
-    user="$(id -un)"
-  fi
-  home="$(getent passwd "$user" 2>/dev/null | cut -d: -f6)"
-  [ -n "$home" ] || home="${HOME:-/root}"
-  printf '%s' "$home/www"
+  printf '%s' "$(resolve_admin_home)/www"
+}
+
+# Print the host tools root — everything from the storage snapshot that is NOT a
+# website (backup scripts, configs, cron, misc data). Precedence: $TOOLS_ROOT
+# (from .env) > the admin user's home (~/tools).
+resolve_tools_root() {
+  if [ -n "${TOOLS_ROOT:-}" ]; then printf '%s' "$TOOLS_ROOT"; return 0; fi
+  printf '%s' "$(resolve_admin_home)/tools"
 }
 
 # Map a container path (/var/www[/...]) to its host location ($WWW_ROOT[...]).
