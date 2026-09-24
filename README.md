@@ -1,5 +1,11 @@
 # server-setup
 
+## TODO
+
+~/gmail should update
+
+----
+
 The containerised web stack for **hellyer.kiwi** (Nginx + PHP 8.5 + MariaDB +
 Valkey + Node), deployed with Podman. Everything needed to rebuild the server
 lives in this repo.
