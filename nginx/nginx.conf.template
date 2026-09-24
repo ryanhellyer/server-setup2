@@ -68,7 +68,15 @@ http {
 	##
 	upstream php-fpm { server unix:/run/php/php8.5-fpm.sock; }
 	# chat.hellyer.kiwi is served by Open WebUI (its own container).
-	upstream open-webui { server open-webui:8080; }
+	#
+	# Resolve open-webui per-request via the resolver + a variable, so nginx
+	# does NOT look it up at startup. A podman-compose pod does not create a
+	# per-service DNS alias, and if open-webui is absent/slow at boot a static
+	# upstream name makes nginx fail to start ("host not found in upstream") and
+	# crash-loop, taking every other site down with it. The variable defers the
+	# lookup to request time, so nginx always starts.
+	resolver 127.0.0.11 valid=10s ipv6=off;
+	set $open_webui_upstream "open-webui:8080";
 
 	##
 	# Maps — cache control & platform detection.
