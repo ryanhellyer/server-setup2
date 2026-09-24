@@ -60,8 +60,14 @@ if command -v ufw >/dev/null 2>&1; then
   ufw allow 22/tcp   >/dev/null 2>&1 || true
   ufw allow 80/tcp   >/dev/null 2>&1 || true
   ufw allow 443/tcp  >/dev/null 2>&1 || true
+  # Published container ports are DNAT'd, so inbound web traffic traverses
+  # ufw's FORWARD chain. Without these, the default "deny (routed)" policy
+  # silently drops everything to nginx: the box answers on 22 but 80/443 look
+  # closed from the internet.
+  ufw route allow proto tcp from any to any port 80  >/dev/null 2>&1 || true
+  ufw route allow proto tcp from any to any port 443 >/dev/null 2>&1 || true
   ufw --force enable >/dev/null 2>&1 || true
-  echo "==> firewall enabled (22, 80, 443/tcp)"
+  echo "==> firewall enabled (22, 80, 443/tcp + routed web ports)"
 fi
 
 # ---- 1c. swap: avoid OOM / thrash on small boxes ----

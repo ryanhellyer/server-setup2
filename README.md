@@ -181,12 +181,18 @@ sudo bash scripts/install-login-help.sh --remove   # remove it
 
 ### Firewall (ufw) and the containers
 
-`deploy.sh` enables ufw (allowing 22/80/443) and then allows the podman network
-subnets for **input and routed** traffic. Without that, ufw's default-deny
-blocks the netavark DNS, so containers can't resolve `mariadb`/`valkey`/
-`open-webui` and the sites hang (WordPress: "Error establishing a database
-connection"; Laravel: name-resolution timeouts). The subnets are discovered via
-`podman network inspect`, so it adapts to whatever podman assigns.
+`deploy.sh` enables ufw and sets up two things, both required because the
+containers sit behind podman's NAT:
+
+1. **Routed web ports** — `ufw route allow ... port 80/443`. Published container
+   ports are DNAT'd, so inbound traffic crosses ufw's FORWARD chain; without
+   this the default `deny (routed)` drops it and the box looks closed on 80/443
+   (even though it answers on 22).
+2. **The podman subnets** (input + routed), discovered via
+   `podman network inspect`. Without this, ufw blocks the netavark DNS, so
+   containers can't resolve `mariadb`/`valkey`/`open-webui` and the sites hang
+   (WordPress: "Error establishing a database connection"; Laravel:
+   name-resolution timeouts).
 
 ### Open WebUI resilience
 
