@@ -32,6 +32,14 @@ sed -e "s/__MARIADB_BUFFER_POOL__/$BP/" -e "s/__MARIADB_LOG_SIZE__/$LG/" \
     maria/my.cnf.template > maria/my.cnf
 echo "Rendered maria/my.cnf (buffer pool: $BP, log: $LG)."
 
+# ---- nginx/snippets/ssl-params.conf (resolver address) ----
+# Podman/netavark DNS lives on the network gateway (10.89.0.1 for `web`). The
+# old default (Docker's 127.0.0.11) does not exist under podman, and a resolver
+# pointing at a dead address makes OCSP + any variable-based proxy_pass hang.
+DNS="${NGINX_DNS:-10.89.0.1}"
+sed "s/__NGINX_DNS__/$DNS/g" nginx/snippets/ssl-params.conf.template > nginx/snippets/ssl-params.conf
+echo "Rendered nginx/snippets/ssl-params.conf (resolver: $DNS)."
+
 # ---- nginx/snippets/security-headers.conf (HSTS: production only) ----
 # In test mode the self-signed fallback certs are used, and a
 # Strict-Transport-Security header (includeSubdomains) would make browsers

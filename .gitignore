@@ -12,6 +12,7 @@ env/letsencrypt/
 # edit the matching .template files instead)
 /maria/my.cnf
 /nginx/nginx.conf
+/nginx/snippets/ssl-params.conf
 /php/fpm-www.conf
 
 # Local logs / caches
