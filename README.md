@@ -26,7 +26,8 @@ That one command is fully hands-off after the two prompt types below:
 3. **Downloads the repo as a tarball** from GitHub (public — no git/keys needed).
 4. **Opens the firewall ports** 22/80/443.
 5. **Generates a standard storage key** (`~/.ssh/id_ed25519`) and authorises it on
-   both storage boxes, then mounts `gmail`/`databases` under `ryan`'s home.
+   all three storage boxes (primary, snapshot source and the off-site backup
+   box), then mounts `gmail`/`databases` under `ryan`'s home.
 6. **Deploys automatically** — creates `.env` with a generated MariaDB root
    password (no editor), builds the images, brings up the whole stack, installs
    systemd units + the nightly-backup/TLS-renewal timers, then **imports every
@@ -320,8 +321,8 @@ which snapshot was copied, so trimming `~/tools` by hand survives later deploys.
 backup scripts stay executable); there is no `--delete`, so it never removes
 anything locally.
 
-**One-time key authorisation:** `storage-mounts.sh` installs the key on both
-boxes (asking for each box's password once) with Hetzner's `install-ssh-key`,
+**One-time key authorisation:** `storage-mounts.sh` installs the key on all
+three boxes (asking for each box's password once) with Hetzner's `install-ssh-key`,
 which appends and never replaces existing keys.
 
 ## Migrating all sites (files + databases)
@@ -427,12 +428,17 @@ install/deploy:
 Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'`.
 
 > **Off-site backups.** `scripts/backup.sh` writes dated, hardlinked
-> `rsync --link-dest` snapshots to the "pressabl-backups" Storage Box (u513410):
+> `rsync --link-dest` snapshots to the "pressabl-backups" Storage Box (u676107):
 > one chain per source under `$BACKUP_REMOTE_BASE/` — `www`, `tools`, `mariadbs`
 > (the MySQL dumps), `gmail` and `server-setup`. It also dumps every MariaDB
 > database (one gzipped file per DB) into `~/mariadbs` first. A source is
 > skipped if that day's snapshot already exists. Restore with
 > `scripts/restore.sh --from-backup [DATE] [source…]`.
+>
+> This is a **different box from the snapshot source**: the new server reads
+> site snapshots from `u513410` (`STORAGE_*`, the old server's box, read-only)
+> but writes its own backups to `u676107` (`BACKUP_*`). The two are deliberately
+> independent — `BACKUP_HOST` never falls back to `STORAGE_HOST`.
 >
 > Controls in `.env`: `BACKUP_ENABLED`, `BACKUP_USER/HOST/PORT/KEY`,
 > `BACKUP_REMOTE_BASE`, `BACKUP_WEEKLY_DAY`, and optional `BACKUP_KEEP_DAYS` /

@@ -5,9 +5,14 @@
 #   source scripts/lib-paths.sh scripts/lib-storage.sh scripts/lib-db.sh
 #   source scripts/lib-backup.sh      # after .env is loaded
 #
-# The off-site backup target is the "pressabl-backups" Storage Box (u513410 by
-# default), written with rsync --link-dest dated snapshots — one chain per
+# The off-site backup target is the "pressabl-backups" Storage Box (u676107),
+# written with rsync --link-dest dated snapshots — one chain per
 # source under $BACKUP_REMOTE_BASE/<name>/<YYYY-MM-DD>/.
+#
+# This is deliberately independent of the STORAGE_* snapshot source (u513410):
+# the new server READS snapshots from u513410 but WRITES backups to u676107.
+# Do not fall back to STORAGE_* here or backups would land on the old server's
+# box — a missing BACKUP_HOST must be a hard error, not a silent redirect.
 #
 # Provides:
 #   $BACKUP_ENABLED $BACKUP_USER $BACKUP_HOST $BACKUP_PORT $BACKUP_KEY
@@ -21,9 +26,9 @@
 # =============================================================================
 
 BACKUP_ENABLED="${BACKUP_ENABLED:-1}"
-BACKUP_USER="${BACKUP_USER:-${STORAGE_USER:-}}"
-BACKUP_HOST="${BACKUP_HOST:-${STORAGE_HOST:-}}"
-BACKUP_PORT="${BACKUP_PORT:-${STORAGE_PORT:-23}}"
+BACKUP_USER="${BACKUP_USER:-}"
+BACKUP_HOST="${BACKUP_HOST:-}"
+BACKUP_PORT="${BACKUP_PORT:-23}"
 BACKUP_REMOTE_BASE="${BACKUP_REMOTE_BASE:-/home}"
 BACKUP_WEEKLY_DAY="${BACKUP_WEEKLY_DAY:-1}"
 BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-}"

@@ -415,7 +415,7 @@ Applied **at deploy time** (documented here so you don't forget):
 | `scripts/migrate-sites.sh` | Runs provision-site across every site found in the newest snapshot. |
 | `scripts/provision-all.sh` | `migrate-sites --all` + `provision-openwebui` — run by deploy.sh on every deploy. |
 | `scripts/provision-openwebui.sh` | Restores the Open WebUI (chat.hellyer.kiwi) data and starts its container. |
-| `scripts/storage-mounts.sh` | Authorises the storage key on both boxes + mounts `gmail`/`databases`. |
+| `scripts/storage-mounts.sh` | Authorises the storage key on all three boxes (primary, snapshot source, backup) + mounts `gmail`/`databases`. |
 | `scripts/install-cli.sh` | Installs host-side CLI wrappers (see below). |
 | `scripts/install-systemd.sh` | Generates + enables `container-*.service` units so the stack auto-starts at boot (called by deploy.sh). |
 
