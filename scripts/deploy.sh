@@ -240,14 +240,10 @@ fi
 echo "==> creating log directories referenced by the nginx config"
 ensure_nginx_log_dirs
 
-# ---- 7. TEST MODE: fake sites + temporary certs ----
+# ---- 7. TEST MODE: temporary certs ----
 # Nothing here runs in production — set DEPLOY_ENV=production in .env and
-# these steps are skipped automatically (no manual code removal needed).
+# this step is skipped automatically (no manual code removal needed).
 if [ "$DEPLOY_ENV" = "test" ]; then
-  # Temporary placeholder pages in every empty web root, so any configured
-  # domain resolves instead of 404ing. Never overwrites existing content.
-  "$PWD/scripts/seed-test-sites.sh"
-
   # Temporary self-signed cert whose SANs cover every vhost domain, so each
   # test site has a matching certificate. certbot replaces this in production.
   "$PWD/scripts/gen-test-certs.sh"

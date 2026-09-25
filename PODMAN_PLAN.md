@@ -413,7 +413,7 @@ Applied **at deploy time** (documented here so you don't forget):
 | `scripts/lib-storage.sh` / `lib-db.sh` / `lib-env.sh` | Shared helpers: generic storage config + snapshot discovery/rename, MariaDB provisioning (per-site users) and KEY=value edits. |
 | `scripts/provision-site.sh` | Restores one site (files + DB) from the newest snapshot, always fresh; detects Laravel/Symfony/WordPress/SQLite; gives each DB its own user + password. |
 | `scripts/migrate-sites.sh` | Runs provision-site across every site found in the newest snapshot. |
-| `scripts/provision-all.sh` | `migrate-sites --all --prune-placeholders` + `provision-openwebui` — run by deploy.sh on every deploy. |
+| `scripts/provision-all.sh` | `migrate-sites --all` + `provision-openwebui` — run by deploy.sh on every deploy. |
 | `scripts/provision-openwebui.sh` | Restores the Open WebUI (chat.hellyer.kiwi) data and starts its container. |
 | `scripts/storage-mounts.sh` | Authorises the storage key on both boxes + mounts `gmail`/`databases`. |
 | `scripts/install-cli.sh` | Installs host-side CLI wrappers (see below). |

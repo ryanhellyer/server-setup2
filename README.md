@@ -357,10 +357,9 @@ what `deploy.sh` runs on **every** deploy:
 ```bash
 sudo bash scripts/migrate-sites.sh --dry-run        # show what it would do
 sudo bash scripts/provision-all.sh                  # everything, for real
-sudo bash scripts/migrate-sites.sh --prune-placeholders
 ```
 
-Flags: `--files-only`, `--db-only`, `--dry-run`, `--prune-placeholders`.
+Flags: `--files-only`, `--db-only`, `--dry-run`.
 
 > **Every deploy is destructive to server-side data** (files, DBs and Open WebUI
 > are replaced from the newest snapshot) — this box is a mirror of the backups.

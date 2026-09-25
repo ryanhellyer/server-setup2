@@ -5,15 +5,12 @@
 #   sudo bash scripts/migrate-sites.sh                 # all sites
 #   sudo bash scripts/migrate-sites.sh cvs.hellyer.kiwi spam-destroyer.com
 #   sudo bash scripts/migrate-sites.sh --dry-run
-#   sudo bash scripts/migrate-sites.sh --prune-placeholders
 #
 # With no site arguments it lists the newest dated snapshot under SNAPSHOT_ROOT
 # and keeps the directories that look like sites (contain public/ or public_html/
 # or .env or wp-config.php), skipping backup scripts / config dirs.
 #
 # Flags passed through to provision-site.sh: --files-only --db-only --dry-run.
-#   --prune-placeholders   delete seeded placeholder sites (public/index.html)
-#                          before provisioning.
 #
 # Config: see scripts/lib-storage.sh.
 # =============================================================================
@@ -22,19 +19,17 @@ cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && source .env && set +a
 source scripts/lib-paths.sh
 source scripts/lib-storage.sh
-WWW_ROOT="$(resolve_www_root)"
 
 say()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!!]\033[0m %s\n' "$*"; }
 
-ALL=0; PRUNE=0; DRY=0; OPTS=(); SITE_ARGS=()
+ALL=0; DRY=0; OPTS=(); SITE_ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --all) ALL=1 ;;
-    --prune-placeholders) PRUNE=1 ;;
     --dry-run) DRY=1; OPTS+=("$arg") ;;
     --files-only|--db-only) OPTS+=("$arg") ;;
-    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $arg" >&2; exit 1 ;;
     *) SITE_ARGS+=("$arg") ;;
   esac
@@ -61,18 +56,6 @@ fi
 [ "${#SITES[@]}" -gt 0 ] || { warn "No sites to provision."; exit 0; }
 say "Sites: ${SITES[*]}"
 echo
-
-# Optionally delete the seeded placeholder sites so the real files take their
-# place. Real sites never contain the placeholder text.
-if [ "$PRUNE" = 1 ]; then
-  say "Removing seeded placeholder sites under $WWW_ROOT"
-  for d in "$WWW_ROOT"/*/; do
-    [ -d "$d" ] || continue
-    if grep -rqs "Temporary test site" "$d"public*/index.* 2>/dev/null; then
-      if [ "$DRY" = 1 ]; then echo "    DRY: rm -rf ${d%/}"; else say "  rm -rf ${d%/}"; rm -rf "$d"; fi
-    fi
-  done
-fi
 
 FAILED=()
 for site in "${SITES[@]}"; do

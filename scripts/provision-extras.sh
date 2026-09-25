@@ -43,7 +43,6 @@ for arg in "$@"; do
     --force)   FORCE=1 ;;
     --files-only) : ;;                 # extras are files anyway
     --db-only) DO=0 ;;                 # nothing file-shaped to do
-    --prune-placeholders) : ;;         # handled by migrate-sites.sh
     -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
