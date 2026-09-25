@@ -302,7 +302,7 @@ live on remote storage (a Hetzner Storage Box by default), described by generic
   newest is used automatically. Pin `SNAPSHOT_DIR` to force a date.
 * `SNAPSHOT_RENAMES` — map a snapshot dir to a different local dir, e.g.
   `spam-destroyer.com=spam-destroyer.hellyer.kiwi`.
-* `DB_DUMP_DIR` — where the `<db>-<date>.sql.gz` dumps are (the `~/databases`
+* `DB_DUMP_DIR` — where the `<db>-<date>.sql.gz` dumps are (the `~/mariadbs`
   mount).
 
 ### Non-site files: `~/tools`

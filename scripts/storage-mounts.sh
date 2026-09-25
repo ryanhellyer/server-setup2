@@ -57,8 +57,10 @@ BACKUP_USER="${BACKUP_USER:-u676107}"
 BOXES=("$PRIMARY_USER@$PRIMARY_HOST" "$SECONDARY_USER@$SECONDARY_HOST" \
        "$BACKUP_USER@$BACKUP_HOST")
 # mount spec: "user@host:remote-dir  local-folder-name"
+# The box's /home/databases is mounted at ~/mariadbs (the canonical local name
+# used by DB_DUMP_DIR / backup.sh); ~/databases no longer exists.
 MOUNT_SPECS=("$PRIMARY_USER@$PRIMARY_HOST:/home/gmail gmail" \
-             "$PRIMARY_USER@$PRIMARY_HOST:/home/databases databases")
+             "$PRIMARY_USER@$PRIMARY_HOST:/home/databases mariadbs")
 
 # ---- where to mount: the invoking user's home (~) ----
 resolve_mount_user() {
@@ -176,6 +178,20 @@ if command -v systemctl >/dev/null 2>&1; then
   systemctl daemon-reload
 fi
 
+# ---- 2b. retire the old ~/databases mount (renamed to ~/mariadbs) -----------
+# Older installs mounted the box's /home/databases at ~/databases. The canonical
+# name is now ~/mariadbs; unmount and remove the stale mountpoint so no empty,
+# confusing directory lingers.
+STALE_DB_DIR="$MOUNT_HOME/databases"
+if mountpoint -q "$STALE_DB_DIR" 2>/dev/null; then
+  say "Unmounting retired ~/databases (now ~/mariadbs)"
+  umount "$STALE_DB_DIR" 2>/dev/null || umount -l "$STALE_DB_DIR" 2>/dev/null || warn "Could not unmount $STALE_DB_DIR"
+fi
+if [ -d "$STALE_DB_DIR" ]; then
+  rmdir "$STALE_DB_DIR" 2>/dev/null && say "Removed retired $STALE_DB_DIR" \
+    || warn "$STALE_DB_DIR still exists (not empty?) — remove it by hand if stale."
+fi
+
 # ---- 3. mount now ----
 for spec in "${MOUNT_SPECS[@]}"; do
   connection="${spec%% *}"   # user@host:/remote/dir
@@ -214,5 +230,5 @@ for spec in "${MOUNT_SPECS[@]}"; do
 done
 
 echo
-echo "Done. Passwordless access to all three boxes; u458814 gmail+databases mounted under $MOUNT_HOME."
+echo "Done. Passwordless access to all three boxes; u458814 gmail+mariadbs mounted under $MOUNT_HOME."
 echo "Mounts are in /etc/fstab and reappear automatically after reboot."

@@ -68,6 +68,46 @@ TMP_SUFFIX="$$"
 trap 'rm -f "/tmp/ps-env.$TMP_SUFFIX" "/tmp/ps-wp.$TMP_SUFFIX" 2>/dev/null || true' EXIT
 run() { if [ "$DRY" = 1 ]; then printf '    DRY: %s\n' "$*"; else "$@"; fi; }
 
+# ---- point the app at the container services --------------------------------
+# Runs BEFORE any migration attempt so `artisan migrate` / doctrine migrate can
+# actually reach MariaDB (the snapshot's .env still has the OLD server's
+# DB_HOST=localhost). Safe to call once DB_USER/DB_PASS are known (or empty for
+# apps with no database). Credentials/APP_URL are only written when relevant.
+rewrite_app_env() {
+  if [ "$APP_TYPE" = "symfony" ]; then
+    if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
+      say "Rewriting DATABASE_URL for the container network"
+      new_url="mysql://$DB_USER:$DB_PASS@mariadb:3306/$DB_NAME"
+      [ -n "$DB_QUERY" ] && new_url="$new_url?$DB_QUERY"
+      [ "$DRY" != 1 ] && set_env "$ENV_FILE" DATABASE_URL "\"$new_url\""
+    fi
+    [ "$DRY" != 1 ] && {
+      set_env "$ENV_FILE" REDIS_HOST valkey
+      set_env "$ENV_FILE" REDIS_PASSWORD ""
+    }
+  elif [ -f "$LOCAL_DIR/.env" ]; then
+    say "Rewriting app .env for the container network"
+    set_env "$LOCAL_DIR/.env" DB_HOST mariadb
+    set_env "$LOCAL_DIR/.env" DB_PORT 3306
+    set_env "$LOCAL_DIR/.env" REDIS_HOST valkey
+    set_env "$LOCAL_DIR/.env" REDIS_PASSWORD ""
+    if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
+      set_env "$LOCAL_DIR/.env" DB_USERNAME "$DB_USER"
+      set_env "$LOCAL_DIR/.env" DB_PASSWORD "$DB_PASS"
+    fi
+    set_env "$LOCAL_DIR/.env" APP_URL "https://$DOMAIN"
+  elif [ -f "$LOCAL_DIR/wp-config.php" ]; then
+    say "Rewriting wp-config.php for the container network"
+    if [ "$DRY" != 1 ]; then
+      sed -i -E "s/(define\(\s*'DB_HOST'\s*,\s*')[^']*(')/\1mariadb\2/"     "$LOCAL_DIR/wp-config.php"
+      if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
+        sed -i -E "s/(define\(\s*'DB_USER'\s*,\s*')[^']*(')/\1$DB_USER\2/"     "$LOCAL_DIR/wp-config.php"
+        sed -i -E "s/(define\(\s*'DB_PASSWORD'\s*,\s*')[^']*(')/\1$DB_PASS\2/" "$LOCAL_DIR/wp-config.php"
+      fi
+    fi
+  fi
+}
+
 say "Provisioning $SITE  ->  $LOCAL_NAME   (snapshot $SNAPSHOT)"
 [ "$DRY" = 1 ] && warn "dry-run: no changes will be made"
 
@@ -87,6 +127,7 @@ fi
 
 # ---- 2. detect the app + its database ---------------------------------------
 APP_TYPE=""; DB_DRIVER=""; DB_NAME=""; DB_QUERY=""; SQLITE_URL=""
+ENV_REWRITTEN=0
 ENV_FILE="$LOCAL_DIR/.env"; WPCONF="$LOCAL_DIR/wp-config.php"
 if [ ! -f "$ENV_FILE" ] && [ ! -f "$WPCONF" ]; then
   box_cat "$REMOTE_DIR/.env"          > "/tmp/ps-env.$TMP_SUFFIX" 2>/dev/null || true
@@ -161,6 +202,10 @@ if [ "$DO_DB" = 1 ] && [ -n "$DB_DRIVER" ]; then
     say "Creating database '$DB_NAME' + user '$DB_USER' (fresh password)"
     [ "$DRY" != 1 ] && db_provision "$DB_NAME" "$DB_USER" "$DB_PASS"
 
+    # Point the app at the containers NOW, so migrations below can connect.
+    rewrite_app_env
+    ENV_REWRITTEN=1
+
     dump="$(db_latest_dump "$DB_NAME" || true)"
     if [ -n "$dump" ]; then
       say "Importing $(basename "$dump") (drop + recreate)"
@@ -180,46 +225,20 @@ if [ "$DO_DB" = 1 ] && [ -n "$DB_DRIVER" ]; then
   fi
 fi
 
-# ---- 4. point the app at the container services -----------------------------
+# ---- 4. clear caches so the new connection settings take effect ------------
+# Ensure the app points at the containers even when section 3 didn't run the
+# rewrite (--files-only, SQLite, or a static/no-DB site).
+[ "$ENV_REWRITTEN" = 1 ] || rewrite_app_env
 if [ "$APP_TYPE" = "symfony" ]; then
-  if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
-    say "Rewriting DATABASE_URL for the container network"
-    new_url="mysql://$DB_USER:$DB_PASS@mariadb:3306/$DB_NAME"
-    [ -n "$DB_QUERY" ] && new_url="$new_url?$DB_QUERY"
-    [ "$DRY" != 1 ] && set_env "$ENV_FILE" DATABASE_URL "\"$new_url\""
-  fi
-  [ "$DRY" != 1 ] && {
-    set_env "$ENV_FILE" REDIS_HOST valkey
-    set_env "$ENV_FILE" REDIS_PASSWORD ""
-  }
   if [ "$DRY" != 1 ]; then
     rm -rf "$LOCAL_DIR/var/cache"/* 2>/dev/null || true
     podman exec -u www-data -w "$CONTAINER_WWW/$LOCAL_NAME" "$CONTAINER_PHP_FPM" php bin/console cache:clear >/dev/null 2>&1 || true
   fi
 elif [ -f "$LOCAL_DIR/.env" ]; then
-  say "Rewriting app .env for the container network"
-  set_env "$LOCAL_DIR/.env" DB_HOST mariadb
-  set_env "$LOCAL_DIR/.env" DB_PORT 3306
-  set_env "$LOCAL_DIR/.env" REDIS_HOST valkey
-  set_env "$LOCAL_DIR/.env" REDIS_PASSWORD ""
-  if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
-    set_env "$LOCAL_DIR/.env" DB_USERNAME "$DB_USER"
-    set_env "$LOCAL_DIR/.env" DB_PASSWORD "$DB_PASS"
-  fi
-  set_env "$LOCAL_DIR/.env" APP_URL "https://$DOMAIN"
   if [ "$DRY" != 1 ]; then
     rm -f "$LOCAL_DIR"/bootstrap/cache/*.php 2>/dev/null || true
     podman exec -u www-data -w "$CONTAINER_WWW/$LOCAL_NAME" "$CONTAINER_PHP_FPM" php artisan config:clear >/dev/null 2>&1 || true
     podman exec -u www-data -w "$CONTAINER_WWW/$LOCAL_NAME" "$CONTAINER_PHP_FPM" php artisan cache:clear  >/dev/null 2>&1 || true
-  fi
-elif [ -f "$LOCAL_DIR/wp-config.php" ]; then
-  say "Rewriting wp-config.php for the container network"
-  if [ "$DRY" != 1 ]; then
-    sed -i -E "s/(define\(\s*'DB_HOST'\s*,\s*')[^']*(')/\1mariadb\2/"     "$LOCAL_DIR/wp-config.php"
-    if [ "$DB_DRIVER" = "mariadb" ] && [ "$DO_DB" = 1 ]; then
-      sed -i -E "s/(define\(\s*'DB_USER'\s*,\s*')[^']*(')/\1$DB_USER\2/"     "$LOCAL_DIR/wp-config.php"
-      sed -i -E "s/(define\(\s*'DB_PASSWORD'\s*,\s*')[^']*(')/\1$DB_PASS\2/" "$LOCAL_DIR/wp-config.php"
-    fi
   fi
 fi
 

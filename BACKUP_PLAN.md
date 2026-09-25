@@ -23,7 +23,7 @@ Three boxes are involved, and they have **distinct, non-overlapping roles**:
 
 | Box | Role | Access |
 |---|---|---|
-| **u458814** | *primary* — holds `/home/gmail`, `/home/databases` | mounted read/write at `~/gmail`, `~/databases` by `storage-mounts.sh` |
+| **u458814** | *primary* — holds `/home/gmail`, `/home/databases` | mounted read/write at `~/gmail`, `~/mariadbs` by `storage-mounts.sh` |
 | **u513410** | *snapshot source* — holds `/home/pressabl/<date>` (the **old server's** backup chain) | **read-only** source for provisioning (`STORAGE_*`, `SNAPSHOT_ROOT=/home/pressabl`) |
 | **u676107** | *pressabl-backups* — the new server's **backup target** | written by `scripts/backup.sh` (`BACKUP_*`) |
 
@@ -121,8 +121,9 @@ backup box u676107 (so it can be restored independently):
 | `~/server-setup` (the repo) | `/home/server-setup` | `/home/server-setup/<YYYY-MM-DD>/` |
 
 `~/mariadbs` is a **new local directory** that holds the MySQL dumps (the backup
-script writes them there before syncing). It replaces the current
-`DB_DUMP_DIR=/home/ryan/databases` (which is a mount of `u458814:/home/databases`).
+script writes them there before syncing). It is the mount point for
+`u458814:/home/databases` (created by `storage-mounts.sh`); the old
+`~/databases` name no longer exists.
 
 These chains are written to u676107 and **never** to u513410 (the read-only
 snapshot source), so they cannot collide with the old server's
