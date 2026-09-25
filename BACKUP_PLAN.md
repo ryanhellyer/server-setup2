@@ -240,9 +240,9 @@ BACKUP_WEEKLY_DAY=1
   `.env`.
 - The `.env` in question is the repo's own **`~/server-setup/.env`** (gitignored).
   It holds server secrets: `MARIADB_ROOT_PASSWORD`, `GMAIL_APP_PASSWORD`,
-  `SITE_DB_PASSWORD_*` and `OPENROUTER_API_KEY`. Backing up `~/server-setup`
-  therefore copies those secrets off-site to the Storage Box. Either accept it
-  (the box is private) or exclude `.env` from that source (decision D2).
+  `SITE_DB_PASSWORD_*` and `OPENROUTER_API_KEY`. **Decision D2: it is included**
+  — the Storage Box is private, and having `.env` in the backup means a full
+  restore is possible without re-entering secrets. No exclude is applied to it.
 
 ### 4.8 Rollout / migration
 
@@ -260,8 +260,9 @@ BACKUP_WEEKLY_DAY=1
   `/home/mariadbs`, `/home/gmail`, `/home/server-setup` (as specified) — confirm
   each holds dated `<YYYY-MM-DD>/` snapshots (vs a flat live mirror). No collision
   with the legacy `/home/pressabl` chain.
-- **D2 — `~/server-setup` contents.** Backing it up includes `.env` (and its
-  secrets — see §4.7). Accept, or exclude `.env` from that source?
+- **D2 — `~/server-setup` contents.** **Resolved: include `.env`** (and its
+  secrets) in the backup — the Storage Box is private and this enables a full
+  restore without re-entering secrets. See §4.7.
 - **D3 — DB cadence + retention.** Dump every daily run, or weekly like the
   legacy? Retention: last-4-weekly + first-of-month, or a rolling N days?
 - **D8 — SQLite.** **Resolved: do nothing.** SQLite is rarely used, changes are
