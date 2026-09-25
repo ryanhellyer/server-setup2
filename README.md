@@ -118,8 +118,8 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Deploy / update the stack (no menu) | `sudo bash scripts/deploy.sh` (refreshes files from the tarball, keeps `.env`) |
 | Refresh images + container OS packages (no data changes) | `sudo bash scripts/update.sh` (weekly `server-update.timer`) |
 | Add a site (no menu) | `sudo bash scripts/new-site.sh <domain> <type>` |
-| Back up | `sudo bash scripts/backup.sh` |
-| Restore from backup | `sudo bash scripts/restore.sh` |
+| Back up (off-site snapshots + DB dumps) | `sudo bash scripts/backup.sh` |
+| Restore from off-site backup | `sudo bash scripts/restore.sh --from-backup [DATE] [www\|tools\|mariadbs\|gmail\|server-setup\|all]` |
 | Issue/renew TLS | `sudo bash scripts/certbot-issue.sh` |
 | Fix web-dir ownership + permissions (ryan:www-data, setgid) | `sudo bash scripts/fix-perms.sh` (re-run after `restore.sh`) |
 | Import every site + DB + Open WebUI (always fresh) | `sudo bash scripts/provision-all.sh` (auto-run by `deploy.sh`) |
@@ -427,10 +427,15 @@ install/deploy:
 
 Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'`.
 
-> **Note:** `scripts/backup.sh` is a **work in progress** — it's a simple
-> "mysqldump everything + tar `~/www`" script and needs upgrading to match
-> the real production backup system. The current real backup system from the
-> main site lives in [`temp-backup/`](temp-backup/) (`backup.sh`,
-> `backup-config.sh`, `backups/`) — use it as the reference to build the real
-> new backup system. Until then, treat `scripts/backup.sh` as a starting
-> point, not the final backup solution.
+> **Off-site backups.** `scripts/backup.sh` writes dated, hardlinked
+> `rsync --link-dest` snapshots to the "pressabl-backups" Storage Box (u513410):
+> one chain per source under `$BACKUP_REMOTE_BASE/` — `www`, `tools`, `mariadbs`
+> (the MySQL dumps), `gmail` and `server-setup`. It also dumps every MariaDB
+> database (one gzipped file per DB) into `~/mariadbs` first. A source is
+> skipped if that day's snapshot already exists. Restore with
+> `scripts/restore.sh --from-backup [DATE] [source…]`.
+>
+> Controls in `.env`: `BACKUP_ENABLED`, `BACKUP_USER/HOST/PORT/KEY`,
+> `BACKUP_REMOTE_BASE`, `BACKUP_WEEKLY_DAY`, and optional `BACKUP_KEEP_DAYS` /
+> `BACKUP_KEEP_MONTHLY` pruning. See [`BACKUP_PLAN.md`](BACKUP_PLAN.md) and
+> [`temp-backup/`](temp-backup/) (the legacy system it's modelled on).

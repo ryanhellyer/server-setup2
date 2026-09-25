@@ -1,9 +1,9 @@
 # Backup plan — new server → "pressabl-backups" (Hetzner Storage Box u513410)
 
-Status: **draft / decisions pending**. This document analyses the legacy backup
-system in `temp-backup/`, describes what the new server needs, and proposes a
-concrete implementation. The open decisions at the bottom should be confirmed
-before the scripts are written.
+Status: **implemented** (see §6). This document analyses the legacy backup system
+in `temp-backup/`, describes what the new server needs, and documents the design
+that `scripts/backup.sh` / `scripts/restore.sh` / `scripts/lib-backup.sh`
+implement. Still-open decisions are noted with the default that was chosen.
 
 ## 1. Goal
 
@@ -282,15 +282,21 @@ BACKUP_WEEKLY_DAY=1
 
 ## 6. Implementation checklist (once decided)
 
-- [ ] `.env.example`: add the `BACKUP_*` block; add `DB_DUMP_DIR=~/mariadbs`;
-      retire `BACKUP_SSH` or document it as legacy.
-- [ ] `scripts/lib-backup.sh` (new): resolve `BACKUP_*`, `db_list`,
-      `newest_backup_snapshot <name>`, `prune_snapshots`.
-- [ ] Rewrite `scripts/backup.sh` (`--dry-run`, `--db-only`, `--files-only`,
-      `--force`; `flock`; per-source date check; `--link-dest`).
-- [ ] Extend `scripts/restore.sh` with `--from-backup`.
-- [ ] `scripts/install-systemd.sh`: repoint `server-backup.timer`; log to
-      `/var/log/server-setup/backup.log`.
-- [ ] `README.md`: replace the "work in progress" backup note; add the timer row.
-- [ ] Verify: `bash -n`, hardlink check on the box, `rsync --dry-run`, a real
-      snapshot, a test restore.
+- [x] `.env.example`: add the `BACKUP_*` block; add `DB_DUMP_DIR=~/mariadbs`;
+      retire `BACKUP_SSH`.
+- [x] `scripts/lib-backup.sh` (new): resolve `BACKUP_*`, `db_list`,
+      `backup_newest_snapshot`, `backup_prune_snapshots`, `prune_db_dumps`.
+- [x] Rewrite `scripts/backup.sh` (`--dry-run`, `--db-only`, `--files-only`,
+      `--force`; `flock`; per-source date check; `--link-dest`; fail-soft).
+- [x] Extend `scripts/restore.sh` with `--from-backup`.
+- [x] `scripts/install-systemd.sh`: `server-backup.timer` runs `scripts/backup.sh`
+      daily (already) — script logs to `/var/log/server-setup/backup.log`.
+- [x] `README.md`: replace the "work in progress" note; add the backup section.
+- [ ] Verify on a server: hardlink check on the box, a real run, a test restore.
+
+Implemented with these defaults for the still-open decisions: **D1** separate
+dated chains under `/home/*`; **D3** weekly DB dumps (last 4 + first-of-month);
+**D4** keep all snapshots (optional `BACKUP_KEEP_DAYS`/`BACKUP_KEEP_MONTHLY`
+pruning); **D5** reuse `~/.ssh/id_ed25519`; **D6** rewrite `backup.sh`/`restore.sh`;
+**D7** `BACKUP_ENABLED=0` disables on a box. Change the corresponding `.env`
+value if a different choice is wanted.

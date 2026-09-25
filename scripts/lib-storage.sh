@@ -24,7 +24,9 @@ STORAGE_PORT="${STORAGE_PORT:-${HETZNER_SYNC_PORT:-23}}"
 SNAPSHOT_ROOT="${SNAPSHOT_ROOT:-/home/pressabl}"
 SNAPSHOT_DIR="${SNAPSHOT_DIR:-${HETZNER_SNAPSHOT_DIR:-}}"
 SNAPSHOT_RENAMES="${SNAPSHOT_RENAMES:-}"
-DB_DUMP_DIR="${DB_DUMP_DIR:-/home/ryan/databases}"
+# Local MySQL-dump dir (also the "mariadbs" backup source). Defaults to the
+# admin user's ~/mariadbs (resolve_mariadbs_root, from lib-paths).
+DB_DUMP_DIR="${DB_DUMP_DIR:-$(resolve_mariadbs_root 2>/dev/null || echo "${HOME:-/home/ryan}/mariadbs")}"
 
 # The SSH key lives in the admin user's home (scripts run as root, so $HOME
 # would be /root). Prefer STORAGE_KEY, then the legacy key, then the standard

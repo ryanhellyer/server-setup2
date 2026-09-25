@@ -66,6 +66,14 @@ resolve_tools_root() {
   printf '%s' "$(resolve_admin_home)/tools"
 }
 
+# Print the local MySQL-dump root — the dumps the backup system writes and
+# syncs. Precedence: $MARIADBS_ROOT (from .env) > the admin user's home
+# (~/mariadbs). (DB_DUMP_DIR in lib-storage.sh defaults to this.)
+resolve_mariadbs_root() {
+  if [ -n "${MARIADBS_ROOT:-}" ]; then printf '%s' "$MARIADBS_ROOT"; return 0; fi
+  printf '%s' "$(resolve_admin_home)/mariadbs"
+}
+
 # Map a container path (/var/www[/...] or /var/log/sites[/...]) to its host
 # location ($WWW_ROOT[...] / $LOG_ROOT[...]). Other paths are returned unchanged.
 www_host_path() {
