@@ -10,9 +10,9 @@
 #
 # It also installs systemd timers for the scheduled jobs: `server-backup.timer`
 # (nightly 03:00), `certbot-renew.timer` (2x/day), `server-update.timer`
-# (weekly) and `server-logs.timer` (hourly, rotates the per-site nginx logs
-# under $LOG_ROOT), so backups, TLS renewal, image/OS updates and log rotation
-# happen automatically.
+# (weekly), `server-logs.timer` (hourly, rotates the per-site nginx logs
+# under $LOG_ROOT) and `server-getmail.timer` (daily Gmail fetch), so backups,
+# TLS renewal, image/OS updates, log rotation and mail happen automatically.
 #
 # Re-run anytime (idempotent) — e.g. after `compose up` recreates a container.
 # =============================================================================
@@ -182,12 +182,19 @@ write_job "server-logs" \
   "rotate the server-setup per-site nginx logs" \
   "*-*-* *:00:00" "5m"
 
-echo "==> Enabling scheduled jobs (nightly backup + TLS renewal + weekly update + hourly log rotation)"
+# Gmail fetch daily (getmail -> ~/gmail). Staggered up to 15 min.
+write_job "server-getmail" \
+  "server-setup Gmail fetch (getmail)" \
+  "/bin/bash $PWD/scripts/getmail.sh" \
+  "fetch Gmail into the Maildir daily" \
+  "*-*-* 02:00:00" "15m"
+
+echo "==> Enabling scheduled jobs (nightly backup + TLS renewal + weekly update + hourly log rotation + daily getmail)"
 systemctl daemon-reload
-systemctl enable --now server-backup.timer certbot-renew.timer server-update.timer server-logs.timer
+systemctl enable --now server-backup.timer certbot-renew.timer server-update.timer server-logs.timer server-getmail.timer
 
 echo
 echo "Systemd units installed and enabled. The stack will start at boot:"
 echo "  systemctl list-units 'container-*.service'"
 echo "Scheduled jobs (timers):"
-echo "  systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer'"
+echo "  systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'"

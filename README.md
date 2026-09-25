@@ -267,6 +267,27 @@ it passes 50M. Rotation recreates the file and signals nginx to reopen it
 > Application-level logs (e.g. Laravel's `storage/logs/`) are **not** managed
 > here — only the nginx per-site logs.
 
+## Gmail (getmail)
+
+`scripts/getmail.sh` fetches mail from Gmail over IMAP (SSL) into a Maildir at
+`~/gmail` using **getmail6**, and runs daily via `server-getmail.timer`:
+
+```bash
+sudo bash scripts/getmail.sh                 # write config + fetch
+sudo bash scripts/getmail.sh --config-only   # just (re)write the getmailrc
+```
+
+Config lives in `.env` (`GMAIL_USER`, `GMAIL_APP_PASSWORD` — a Google **app
+password**, `GMAIL_MAILDIR`, optional `GMAIL_MAILBOXES`). The `getmailrc` is
+written to the admin user's `~/.getmail/getmailrc` (mode 600) and the fetch runs
+as that user, so delivered files are owned correctly. `~/gmail` is normally the
+sshfs mount of the storage box's `/home/gmail` share (`scripts/storage-mounts.sh`);
+a plain local dir works too.
+
+> Migrating from an old server? Copy its `~/.getmail/oldmail-*` state files
+> across first, otherwise getmail re-downloads everything into the Maildir, and
+> make sure only one server runs getmail at a time.
+
 ## Remote storage (snapshots, DB dumps)
 
 Snapshots of the old `/var/www`, the weekly DB dumps and the Open WebUI data
@@ -402,8 +423,9 @@ install/deploy:
 | TLS renewal | 2×/day (renews only when <30 days left) | `scripts/certbot-issue.sh` |
 | Weekly image update | Sun 04:00 | `scripts/update.sh` |
 | Log rotation | hourly (caps per-site logs at 50M) | `logrotate /etc/logrotate-server-setup.conf` |
+| Gmail fetch | daily 02:00 | `scripts/getmail.sh` |
 
-Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer'`.
+Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'`.
 
 > **Note:** `scripts/backup.sh` is a **work in progress** — it's a simple
 > "mysqldump everything + tar `~/www`" script and needs upgrading to match

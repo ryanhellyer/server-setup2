@@ -35,6 +35,7 @@ apt-get install -y \
   ufw \
   fail2ban \
   logrotate \
+  getmail6 \
   unattended-upgrades \
   nano
 
