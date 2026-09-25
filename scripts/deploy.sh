@@ -54,6 +54,26 @@ else
   mkdir -p /var/databases /var/cache/nginx /var/log/nginx
 fi
 
+# Allow every podman network subnet through ufw (input + routed). ufw's default
+# "deny (routed)" blocks container->container DNS AND container egress during
+# image builds (the default `podman` bridge) — without this, a fresh
+# `podman build` can't resolve apt mirrors and fails. Subnets are discovered
+# from podman, so it works whatever was assigned. Called before the build
+# (covers the default `podman` net) and again after `compose up` (covers the
+# project networks, which don't exist yet at build time).
+ufw_allow_podman_networks() {
+  command -v ufw >/dev/null 2>&1 || return 0
+  command -v podman >/dev/null 2>&1 || return 0
+  local net sub
+  for net in $(podman network ls --format '{{.Name}}' 2>/dev/null); do
+    for sub in $(podman network inspect "$net" --format '{{range .Subnets}}{{.Subnet}} {{end}}' 2>/dev/null); do
+      [ -n "$sub" ] || continue
+      ufw allow from "$sub"       >/dev/null 2>&1 || true
+      ufw route allow from "$sub" >/dev/null 2>&1 || true
+    done
+  done
+}
+
 # ---- 1b. firewall: always allow the ports the site + certbot need ----
 # Harmless if ufw isn't enabled; rules stay dormant until it is.
 if command -v ufw >/dev/null 2>&1; then
@@ -67,7 +87,10 @@ if command -v ufw >/dev/null 2>&1; then
   ufw route allow proto tcp from any to any port 80  >/dev/null 2>&1 || true
   ufw route allow proto tcp from any to any port 443 >/dev/null 2>&1 || true
   ufw --force enable >/dev/null 2>&1 || true
-  echo "==> firewall enabled (22, 80, 443/tcp + routed web ports)"
+  # Let the podman bridge through so image builds (podman build) can reach the
+  # network — must be before step 8's build.
+  ufw_allow_podman_networks
+  echo "==> firewall enabled (22, 80, 443/tcp + routed web ports + podman nets)"
 fi
 
 # ---- 1c. swap: avoid OOM / thrash on small boxes ----
@@ -249,21 +272,14 @@ podman run --rm \
 echo "==> bring the stack up (build + start)"
 "${COMPOSE[@]}" up -d --build
 
-# ---- 9a. let the podman networks through ufw ----
+# ---- 9a. let the podman networks through ufw (after compose up) ----
 # ufw's default-deny blocks netavark DNS (container->container name resolution)
 # and container->published-port traffic, which makes WordPress/Laravel hang on
-# "Error establishing a database connection" / resolution timeouts. Allow the
-# project's networks for input + routed traffic. Subnets are discovered from
-# podman, so this works whatever was assigned. Must run AFTER compose up (the
-# networks don't exist before).
+# "Error establishing a database connection" / resolution timeouts. The compose
+# networks only exist after `compose up`, so re-run the allow-list now (step 1b
+# covered the default `podman` bridge used by the build).
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
-  for net in $(podman network ls --format '{{.Name}}' | grep -E '^server-setup' || true); do
-    for sub in $(podman network inspect "$net" --format '{{range .Subnets}}{{.Subnet}} {{end}}' 2>/dev/null); do
-      [ -n "$sub" ] || continue
-      ufw allow from "$sub"       >/dev/null 2>&1 || true
-      ufw route allow from "$sub" >/dev/null 2>&1 || true
-    done
-  done
+  ufw_allow_podman_networks
   echo "==> ufw: allowed the podman network subnets (input + routed)"
 fi
 
