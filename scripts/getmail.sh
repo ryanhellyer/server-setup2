@@ -50,8 +50,13 @@ GETMAILRC="$GETMAIL_DIR/getmailrc"
 # ("xxxx xxxx xxxx xxxx"); strip whitespace (Google ignores the spaces) and
 # require alphanumeric so the rendered getmailrc can't be corrupted.
 GMAIL_APP_PASSWORD="$(printf '%s' "$GMAIL_APP_PASSWORD" | tr -d '[:space:]')"
-[ -n "$GMAIL_APP_PASSWORD" ] \
-  || die "GMAIL_APP_PASSWORD is not set in .env (create one at https://myaccount.google.com/apppasswords)."
+if [ -z "$GMAIL_APP_PASSWORD" ]; then
+  # Not configured on this server (yet) — that's a no-op, not an error, so a
+  # fresh install without Gmail doesn't fail the daily timer every night.
+  warn "GMAIL_APP_PASSWORD is not set in .env — skipping Gmail fetch."
+  warn "Create one at https://myaccount.google.com/apppasswords, set it in .env, then re-run."
+  exit 0
+fi
 case "$GMAIL_APP_PASSWORD" in
   *[!A-Za-z0-9]*) die "GMAIL_APP_PASSWORD must be alphanumeric (a Google app password)." ;;
 esac

@@ -169,7 +169,6 @@ snapshot() {                             # local_dir  remote_name
   rsync -az --delete --link-dest="$base/$prev" \
         --no-p --no-g --no-o --omit-dir-times \
         --exclude='.Trash*' --exclude='.cache' --exclude='lost+found' \
-        --exclude='*.sqlite' --exclude='*.sqlite3' \
         -e "ssh -i $BACKUP_KEY -p $BACKUP_PORT" \
         "$src/" "$BACKUP_USER@$BACKUP_HOST:$dest/"
 }
@@ -179,10 +178,7 @@ snapshot "$SRC_MARIADBS" mariadbs
 snapshot "$SRC_GMAIL"    gmail
 snapshot "$SRC_REPO"     server-setup
 
-# 3. consistent SQLite copies (non-hardlinked, into the mariadbs chain)
-#    (see §4.3 — avoids in-place mutation of hardlinked snapshots)
-
-# 4. log to /var/log/server-setup/backup.log
+# 3. log to /var/log/server-setup/backup.log
 ```
 
 **DB list source:** derive from the site list used by provisioning
@@ -193,21 +189,22 @@ DBs" = one dump per database.
 
 ### 4.3 SQLite / in-place-modified files
 
-Hardlinked snapshots share inodes, so a file modified in place (not replaced via
-rename) changes in every snapshot that links to it. This affects **SQLite
-databases** in the web root (`gpx.hellyer.kiwi`, `chat.hellyer.kiwi`, possibly
-others). Options:
-
-- exclude `*.sqlite`/`*.sqlite3` from the hardlinked rsync and store **consistent
-  copies** (`sqlite3 <db> ".backup …"` or `VACUUM INTO`) in a non-hardlinked
-  place (e.g. within the `mariadbs` chain), or
-- accept it, exactly as the legacy did (decision D8).
+**Do nothing (decision D8).** Hardlinked snapshots share inodes, so a file
+modified in place changes in every snapshot that links to it. SQLite is rarely
+used on this server, and where it is, changes are rare and the DBs are very
+small — so this is accepted, exactly as the legacy system did it. No special
+exclusion or separate copies.
 
 ### 4.4 Scheduling (`scripts/install-systemd.sh`)
 
 Point the existing `server-backup` job at the new script, daily (e.g.
-`*-*-* 03:00:00`, `RandomizedDelaySec=15m`), `Type=oneshot`, with the `flock`
+`*-* 03:00:00`, `RandomizedDelaySec=15m`), `Type=oneshot`, with the `flock`
 guard. Keep the existing timer pattern.
+
+Everything (packages, timer, script) is installed **by the repo scripts**, so
+future test and production servers get it automatically on deploy — `host-setup.sh`
+for packages and `install-systemd.sh` for the timer. No manual server-side steps,
+and the old production server is never modified.
 
 ### 4.5 Restore (`scripts/restore.sh` extend)
 
@@ -241,8 +238,11 @@ BACKUP_WEEKLY_DAY=1
 
 - Reuse `~/.ssh/id_ed25519` (already authorised on u513410). Never commit keys or
   `.env`.
-- `~/server-setup` contains `.env` (secrets); the backup is off-site on a private
-  Storage Box. Either accept it (private box) or exclude `.env` (decision D2).
+- The `.env` in question is the repo's own **`~/server-setup/.env`** (gitignored).
+  It holds server secrets: `MARIADB_ROOT_PASSWORD`, `GMAIL_APP_PASSWORD`,
+  `SITE_DB_PASSWORD_*` and `OPENROUTER_API_KEY`. Backing up `~/server-setup`
+  therefore copies those secrets off-site to the Storage Box. Either accept it
+  (the box is private) or exclude `.env` from that source (decision D2).
 
 ### 4.8 Rollout / migration
 
@@ -260,11 +260,12 @@ BACKUP_WEEKLY_DAY=1
   `/home/mariadbs`, `/home/gmail`, `/home/server-setup` (as specified) — confirm
   each holds dated `<YYYY-MM-DD>/` snapshots (vs a flat live mirror). No collision
   with the legacy `/home/pressabl` chain.
-- **D2 — `~/server-setup` contents.** Include `.env`/secrets, or exclude them?
+- **D2 — `~/server-setup` contents.** Backing it up includes `.env` (and its
+  secrets — see §4.7). Accept, or exclude `.env` from that source?
 - **D3 — DB cadence + retention.** Dump every daily run, or weekly like the
   legacy? Retention: last-4-weekly + first-of-month, or a rolling N days?
-- **D8 — SQLite.** Exclude from the hardlinked tree + consistent copies, or
-  accept the legacy behaviour?
+- **D8 — SQLite.** **Resolved: do nothing.** SQLite is rarely used, changes are
+  rare and the DBs are very small — accept the legacy hardlink behaviour.
 - **D9 — getmail.** **Done** — `scripts/getmail.sh` (getmail6, daily
   `server-getmail.timer`) fetches Gmail into `~/gmail`; added as a backup source
   (→ `/home/gmail`).
@@ -285,7 +286,7 @@ BACKUP_WEEKLY_DAY=1
 - [ ] `scripts/lib-backup.sh` (new): resolve `BACKUP_*`, `db_list`,
       `newest_backup_snapshot <name>`, `prune_snapshots`.
 - [ ] Rewrite `scripts/backup.sh` (`--dry-run`, `--db-only`, `--files-only`,
-      `--force`; `flock`; per-source date check; `--link-dest`; SQLite handling).
+      `--force`; `flock`; per-source date check; `--link-dest`).
 - [ ] Extend `scripts/restore.sh` with `--from-backup`.
 - [ ] `scripts/install-systemd.sh`: repoint `server-backup.timer`; log to
       `/var/log/server-setup/backup.log`.
