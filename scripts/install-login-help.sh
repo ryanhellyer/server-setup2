@@ -74,18 +74,25 @@ WWW_DIR="$ADMIN_HOME/www"
 
 cat <<'BANNER'
 
+  Ryans server
+  Pressabl 15
+  ===========
+
   server-setup — host helper commands
   -----------------------------------
     pod-login [container]         shell inside a container (default: php-fpm)
-    pod-logs  [container] [-f]    print / follow a container's logs
+    pod-logs  <container> [-f]    print / follow a container's logs
     pod-status                    stack state + health
-    pod-restart <c> | --all       restart a container / the whole stack
+    pod-restart <c> | --all       restart mariadb | php-fpm | nginx | all
+    nginx-reload | php-reload     graceful reload (no dropped connections)
     sites                         list sites under ~/www (type + database)
     cert-status                   TLS certificate domains + expiry
     pod-exec <container> <cmd>    run one command in any container
-    php | composer | wp | artisan | mariadb | node | nginx ...   in-container tools
+    php composer wp artisan mariadb mysql node npm nginx ffmpeg ...  in-container tools
 
-  Docs: README.md    Menu: sudo ./install/setup.sh    Follow logs: pod-logs -f
+  Menu: sudo bash __REPO_DIR__/install/setup.sh
+    New site: sudo bash __REPO_DIR__/scripts/new-site.sh <domain> <type>
+    Docs: __REPO_DIR__/README.md    Logs: pod-logs -f    Repo: __REPO_DIR__
 
 BANNER
 

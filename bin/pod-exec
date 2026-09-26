@@ -5,7 +5,7 @@
 # as (see scripts/install-cli.sh). The command -> container mapping lives in
 # scripts/lib-containers.sh (the single source of truth).
 #
-# Usage from the host (as root):
+# Usage from the host (auto-sudo — these need root, run them as the admin user):
 #   php -v
 #   composer install
 #   artisan migrate                 # runs `php artisan` in the current dir
@@ -35,6 +35,20 @@ set -euo pipefail
 NAME="$(basename "$0")"
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+# Internal: carry the invoked name across the sudo re-exec below (sudo runs the
+# real script path, so basename would otherwise be "pod-exec").
+if [ "${1:-}" = "--reexec-as" ]; then
+  NAME="$2"; shift 2
+fi
+
+# Everything pod-exec does needs root (podman exec/restart). Self-sudo like the
+# other host helpers so `php`/`wp`/… work exactly as typed — plain `sudo php`
+# wouldn't find these wrappers anyway, since sudo resets PATH.
+if [ "$(id -u)" -ne 0 ]; then
+  exec sudo bash "$SELF" --reexec-as "$NAME" "$@"
+fi
+
 source "$REPO_DIR/scripts/lib-containers.sh"
 source "$REPO_DIR/scripts/lib-paths.sh"
 [ -f "$REPO_DIR/.env" ] && set -a && . "$REPO_DIR/.env" && set +a

@@ -127,7 +127,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 | Restore one site fully (files + DB) | `sudo bash scripts/provision-site.sh <snapshot-dir> [--to <dir>]` |
 | Restore every site found in the snapshot | `sudo bash scripts/migrate-sites.sh [--dry-run]` |
 | Copy the snapshot's non-site files (backup scripts, configs, cron) into `~/tools` | `sudo bash scripts/provision-extras.sh [--force]` |
-| Connect the storage boxes + mount `gmail`, `databases` | `sudo bash scripts/storage-mounts.sh` |
+| Connect the storage boxes + mount `gmail`, `mariadbs` | `sudo bash scripts/storage-mounts.sh` |
 | Create/refresh the admin user (`ryan`) with a key + passwordless sudo | `sudo bash scripts/create-admin-user.sh` |
 | Harden SSH (keys only) / revert | `sudo bash scripts/harden-sshd.sh [--revert]` |
 | Provision/install a remote server, or open its menu over SSH | `./bootstrap.sh --host <ip>` |
@@ -141,6 +141,7 @@ sudo ./install/setup.sh                 # menu: pick "Full install / deploy / up
 
 `scripts/install-cli.sh` (run by `deploy.sh`, or menu item 7) drops wrappers into
 the admin user's `~/.local/bin` — the php/composer/mariadb/... commands above,
+which self-sudo (type them without `sudo`; they proxy into the containers) —
 plus these container helpers:
 
 | Command | What it does |
