@@ -428,8 +428,14 @@ install/deploy:
 | Weekly image update | Sun 04:00 | `scripts/update.sh` |
 | Log rotation | hourly (caps per-site logs at 50M) | `logrotate /etc/logrotate-server-setup.conf` |
 | Gmail fetch | daily 02:00 | `scripts/getmail.sh` |
+| Laravel scheduler | every minute | `scripts/laravel-scheduler.sh` (`LARAVEL_SCHEDULER_SITES`) |
+| WordPress cron | every minute | `scripts/wp-cron.sh` (`WP_CRON_PATH`) |
 
-Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'`.
+There is also one **service** (not a timer): a supervised Laravel queue worker per
+site in `QUEUE_WORKER_SITES`, written as `server-queue-worker-<site>.service`
+(`php artisan queue:work database`, `Restart=always`).
+
+Check them with `systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer' 'server-scheduler.timer' 'server-wpcron.timer'` and `systemctl list-units 'server-queue-worker-*.service'`.
 
 > **Off-site backups.** `scripts/backup.sh` writes dated, hardlinked
 > `rsync --link-dest` snapshots to the "pressabl-backups" Storage Box (u676107):

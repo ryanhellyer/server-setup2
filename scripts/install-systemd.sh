@@ -20,6 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib-containers.sh
 source scripts/lib-paths.sh
+source scripts/lib-storage.sh
 [ -f .env ] && set -a && source .env && set +a
 
 command -v systemctl >/dev/null 2>&1 || { echo "systemd not present — skipping."; exit 0; }
@@ -189,12 +190,70 @@ write_job "server-getmail" \
   "fetch Gmail into the Maildir daily" \
   "*-*-* 02:00:00" "15m"
 
-echo "==> Enabling scheduled jobs (nightly backup + TLS renewal + weekly update + hourly log rotation + daily getmail)"
+# Laravel scheduler: tick every site's `artisan schedule:run` once a minute.
+# No RandomizedDelaySec: the scheduler is minute-accurate by design (a delay
+# would skip the current minute's tasks), and each run is short.
+write_job "server-scheduler" \
+  "server-setup Laravel scheduler tick" \
+  "/bin/bash $PWD/scripts/laravel-scheduler.sh" \
+  "run artisan schedule:run for each Laravel site" \
+  "*-*-* *:*:00" "0"
+
+# WordPress multisite catch-up cron: run all due WP-Cron events every 10 min
+# (a full pass over ~26 sites can take longer than a minute, so a tighter
+# interval would just run back-to-back).
+write_job "server-wpcron" \
+  "server-setup WordPress multisite cron" \
+  "/bin/bash $PWD/scripts/wp-cron.sh" \
+  "run due WP-Cron events across the multisite" \
+  "*-*-* *:0/10:00" "0"
+
+# ---- Laravel queue workers (supervised services) ----------------------------
+# Each entry runs `artisan queue:work database` as a long-lived process. Unlike
+# the timers above these are SERVERS, not oneshots: systemd restarts them if
+# they die (Restart=always). Config (space-separated sites), defaulting to the
+# one site the legacy server ran a worker for:
+#   QUEUE_WORKER_SITES="kartastrophecup.de"
+# A site listed under its snapshot name is resolved through SNAPSHOT_RENAMES
+# (e.g. spam-destroyer.com -> spam-destroyer.hellyer.kiwi) to its local dir.
+WWW_ROOT="$(resolve_www_root)"
+QUEUE_SITES="${QUEUE_WORKER_SITES-kartastrophecup.de}"
+for site in $QUEUE_SITES; do
+  dir="$(apply_rename "$site")"
+  [ -n "$dir" ] || dir="$site"
+  unit="server-queue-worker-${dir//[^A-Za-z0-9]/-}.service"
+  echo "==> Writing $unit (queue worker: $dir)"
+  cat > "$SYSTEMD_DIR/$unit" <<EOF
+[Unit]
+Description=server-setup Laravel queue worker ($dir)
+After=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_MARIADB.service
+Wants=container-$CONTAINER_PHP_FPM.service container-$CONTAINER_MARIADB.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/podman exec -u www-data -w $CONTAINER_WWW/$dir $CONTAINER_PHP_FPM php artisan queue:work database --sleep=3 --tries=3 --timeout=120
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+done
+
+echo "==> Enabling scheduled jobs (nightly backup + TLS renewal + weekly update + hourly log rotation + daily getmail + minute scheduler/wpcron)"
 systemctl daemon-reload
-systemctl enable --now server-backup.timer certbot-renew.timer server-update.timer server-logs.timer server-getmail.timer
+systemctl enable --now server-backup.timer certbot-renew.timer server-update.timer server-logs.timer server-getmail.timer server-scheduler.timer server-wpcron.timer
+for site in $QUEUE_SITES; do
+  dir="$(apply_rename "$site")"; [ -n "$dir" ] || dir="$site"
+  unit="server-queue-worker-${dir//[^A-Za-z0-9]/-}.service"
+  systemctl enable --now "$unit" >/dev/null 2>&1 || true
+done
 
 echo
 echo "Systemd units installed and enabled. The stack will start at boot:"
 echo "  systemctl list-units 'container-*.service'"
 echo "Scheduled jobs (timers):"
-echo "  systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer'"
+echo "  systemctl list-timers 'server-backup.timer' 'certbot-renew.timer' 'server-update.timer' 'server-logs.timer' 'server-getmail.timer' 'server-scheduler.timer' 'server-wpcron.timer'"
+[ -n "$QUEUE_SITES" ] && echo "Queue workers (services): systemctl list-units 'server-queue-worker-*.service'"
