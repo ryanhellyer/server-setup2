@@ -429,7 +429,7 @@ install/deploy:
 | Log rotation | hourly (caps per-site logs at 50M) | `logrotate /etc/logrotate-server-setup.conf` |
 | Gmail fetch | daily 02:00 | `scripts/getmail.sh` |
 | Laravel scheduler | every minute | `scripts/laravel-scheduler.sh` (`LARAVEL_SCHEDULER_SITES`) |
-| WordPress cron | every minute | `scripts/wp-cron.sh` (`WP_CRON_PATH`) |
+| WordPress cron | every 10 minutes | `scripts/wp-cron.sh` (`WP_CRON_PATH`) |
 
 There is also one **service** (not a timer): a supervised Laravel queue worker per
 site in `QUEUE_WORKER_SITES`, written as `server-queue-worker-<site>.service`
