@@ -122,6 +122,13 @@ for name in "${EXPANDED[@]}"; do
     continue
   fi
   say "Restore $name -> $dir"
+  # ~/mariadbs and ~/gmail are usually sshfs mounts of the PRIMARY storage box
+  # (storage-mounts.sh). --delete therefore propagates to that box: restoring
+  # an OLDER date deletes dumps/mail newer than $DATE on it. Make that loud.
+  if command -v mountpoint >/dev/null 2>&1 && mountpoint -q "$dir" 2>/dev/null; then
+    warn "$name: '$dir' is a MOUNT — --delete will remove anything newer than"
+    warn "$name: $DATE on the box behind it. This cannot be undone."
+  fi
   install -d "$dir"
   if [ "$name" = "server-setup" ]; then
     # Merge rather than --delete: the repo contains this running script.
@@ -145,7 +152,7 @@ if [ "$needs_db" = 1 ]; then
     say "Importing databases from dumps dated $DATE"
     for dump in "$MARIADBS_DIR"/*-"$DATE".sql.gz; do
       [ -e "$dump" ] || continue
-      db="${dump##*/}"; db="${db%-$DATE.sql.gz}"
+      db="${dump##*/}"; db="${dump%-"$DATE".sql.gz}"
       case "$db" in *[!A-Za-z0-9_]*) warn "skipping '${dump##*/}' (unexpected name)"; continue ;; esac
       if db_import "$db" "$dump"; then say "  imported $db"; else warn "  import failed for $db"; fi
     done

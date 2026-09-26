@@ -28,6 +28,21 @@ if [ ! -e /swapfile ]; then
   mkswap /swapfile >/dev/null
 fi
 
-swapon /swapfile 2>/dev/null || true
-grep -qs '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
-echo "Swapfile ${SIZE} enabled."
+# Activate. A leftover file that was never mkswap'd (interrupted first run)
+# fails swapon — repair it once instead of silently writing a broken fstab
+# entry that would error on every boot.
+if ! swapon /swapfile 2>/dev/null; then
+  echo "  (swapon failed — re-running mkswap and retrying)"
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null 2>&1 || true
+  swapon /swapfile 2>/dev/null
+fi
+
+if swapon --show 2>/dev/null | grep -q .; then
+  grep -qs '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "Swapfile ${SIZE} enabled."
+else
+  # No fstab entry: a broken one would error on every boot.
+  echo "!! /swapfile exists but could not be enabled as swap — no fstab entry written." >&2
+  echo "!! Inspect it (file /swapfile), fix or delete it, then re-run." >&2
+fi

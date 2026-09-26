@@ -126,7 +126,7 @@ if [ "$DO_FILES" = 1 ]; then
 fi
 
 # ---- 2. detect the app + its database ---------------------------------------
-APP_TYPE=""; DB_DRIVER=""; DB_NAME=""; DB_QUERY=""; SQLITE_URL=""
+APP_TYPE=""; DB_DRIVER=""; DB_NAME=""; DB_QUERY=""
 ENV_REWRITTEN=0
 ENV_FILE="$LOCAL_DIR/.env"; WPCONF="$LOCAL_DIR/wp-config.php"
 if [ ! -f "$ENV_FILE" ] && [ ! -f "$WPCONF" ]; then
@@ -160,6 +160,13 @@ PY
 elif [ -f "$ENV_FILE" ] && grep -qE '^[[:space:]]*DB_CONNECTION=' "$ENV_FILE"; then
   APP_TYPE="laravel"
   DB_DRIVER="$(get_env "$ENV_FILE" DB_CONNECTION || true)"
+  # Laravel's default driver is "mysql"; normalise it (like the Symfony branch
+  # below) so the credential rewrite and the DB import both recognise it —
+  # otherwise a DB_CONNECTION=mysql app keeps its OLD credentials and breaks.
+  case "$DB_DRIVER" in
+    mysql|mariadb) DB_DRIVER="mariadb" ;;
+    sqlite)       DB_DRIVER="sqlite" ;;
+  esac
   DB_NAME="$(get_env "$ENV_FILE" DB_DATABASE || true)"
   say "Detected Laravel app (DB_CONNECTION=${DB_DRIVER:-mariadb})"
 elif [ -f "$WPCONF" ]; then
@@ -243,7 +250,10 @@ elif [ -f "$LOCAL_DIR/.env" ]; then
 fi
 
 # ---- 5. permissions + reload ------------------------------------------------
-[ "$DO_FILES" = 1 ] && run bash "$PWD/scripts/fix-perms.sh" "$LOCAL_DIR" >/dev/null || true
+if [ "$DO_FILES" = 1 ]; then
+  run bash "$PWD/scripts/fix-perms.sh" "$LOCAL_DIR" >/dev/null \
+    || warn "fix-perms failed for $LOCAL_DIR (run: sudo bash scripts/fix-perms.sh $LOCAL_DIR)"
+fi
 if [ "$DRY" != 1 ]; then
   podman exec "$CONTAINER_NGINX" nginx -s reload >/dev/null 2>&1 || true
 fi

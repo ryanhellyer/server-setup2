@@ -16,8 +16,8 @@
 # =============================================================================
 
 db_running() {
-  local i s
-  for i in 1 2 3 4 5; do
+  local _ s
+  for _ in 1 2 3 4 5; do
     s="$(podman inspect -f '{{.State.Running}}' "$CONTAINER_MARIADB" 2>/dev/null || true)"
     [ "$s" = "true" ] && return 0
     sleep 0.5

@@ -23,11 +23,11 @@ source scripts/lib-storage.sh
 say()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!!]\033[0m %s\n' "$*"; }
 
-ALL=0; DRY=0; OPTS=(); SITE_ARGS=()
+ALL=0; OPTS=(); SITE_ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --all) ALL=1 ;;
-    --dry-run) DRY=1; OPTS+=("$arg") ;;
+    --dry-run) OPTS+=("$arg") ;;
     --files-only|--db-only) OPTS+=("$arg") ;;
     -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "Unknown option: $arg" >&2; exit 1 ;;

@@ -121,17 +121,21 @@ snapshot() { # local_dir  remote_name
     log "$name: $DATE already backed up — skipped"
     return 0
   fi
-  local prev link=""
+  local prev link=()
   prev="$(backup_newest_snapshot "$name")"
-  [ -n "$prev" ] && link="--link-dest=$base/$prev"
+  [ -n "$prev" ] && link=(--link-dest="$base/$prev")
   log "snapshot: $src -> $BACKUP_USER@$BACKUP_HOST:$dest${prev:+  (link-dest $prev)}"
   run backup_ssh "mkdir -p '$dest'" || { warn "$name: could not create $dest"; return 1; }
-  run rsync -az --delete $link \
+  if ! run rsync -az --delete "${link[@]}" \
       --no-p --no-g --no-o --omit-dir-times \
       --exclude='.Trash*' --exclude='.cache' --exclude='lost+found' \
       -e "ssh -i $BACKUP_KEY -p $BACKUP_PORT -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-      "$src/" "$BACKUP_USER@$BACKUP_HOST:$dest/" \
-    || { warn "$name: rsync failed"; return 1; }
+      "$src/" "$BACKUP_USER@$BACKUP_HOST:$dest/"; then
+    warn "$name: rsync failed — removing the partial snapshot $DATE so it is"
+    warn "never treated as a complete backup (retry: sudo bash scripts/backup.sh)"
+    run backup_ssh "rm -rf '$dest'"
+    return 1
+  fi
   backup_prune_snapshots "$name"
 }
 

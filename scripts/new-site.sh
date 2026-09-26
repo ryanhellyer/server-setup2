@@ -140,8 +140,14 @@ fi
 
 # ---- 3. Database for laravel / wordpress ----
 if [ "$TYPE" = "laravel" ] || [ "$TYPE" = "wordpress" ]; then
-  [ -f .env ] || cp .env.example .env
-  # DB + user are the same, derived from the domain (dots/dashes -> underscores).
+  # Never create .env from .env.example here: deploy.sh only generates the
+  # strong MARIADB_ROOT_PASSWORD when .env does NOT exist yet, so a placeholder
+  # copy would silently leave the database on the example password.
+  if [ ! -f .env ]; then
+    echo "  !! .env not found — run scripts/deploy.sh first (it creates .env"
+    echo "  !! with a generated MARIADB_ROOT_PASSWORD); then re-run new-site.sh."
+    exit 1
+  fi
   DB_NAME="$(printf '%s' "$DOMAIN" | tr '.-' '__')"
   DB_USER="$DB_NAME"
   DB_PASS="$(openssl rand -hex 16)"

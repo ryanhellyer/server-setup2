@@ -25,7 +25,7 @@ WWW_ROOT="$(resolve_www_root)"
 TARGET="${1:-$WWW_ROOT}"
 [ -d "$TARGET" ] || { echo "No such directory: $TARGET"; exit 1; }
 
-OWNER="ryan"
+OWNER="$(resolve_admin_user)"
 GROUP="www-data"
 
 echo "==> fix-perms: $TARGET (owner $OWNER:$GROUP, dirs 2775, files 664)"

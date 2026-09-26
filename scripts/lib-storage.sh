@@ -77,7 +77,7 @@ snapshot_site_dirs() {
     case "$name" in
       *.sh|*.conf|*.txt|*.save|*.log|*.swp|.*) continue ;;
       *OLD*|*BACKUP*|old-*) continue ;;
-      backups|configs|html|temp|acme|netcup|web-server|from-xps13|old-shit|words-temp|s3-metrics*|jordan-*|nz-*) continue ;;
+      backups|configs|html|temp|acme|netcup|web-server|from-xps13|words-temp|s3-metrics*|jordan-*|nz-*) continue ;;
     esac
     listing="$(box_ssh "ls -a '$snap/$name'" 2>/dev/null || true)"
     if printf '%s\n' "$listing" | grep -qxE 'public|public_html|\.env|wp-config\.php'; then

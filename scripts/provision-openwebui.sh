@@ -82,7 +82,8 @@ if [ "$DO_FILES" = 1 ]; then
     say "Dropping vector_db/ so ChromaDB rebuilds"
     run rm -rf "$LOCAL_DIR/vector_db"
   fi
-  [ "$DRY" != 1 ] && chown -R ryan:ryan "$LOCAL_DIR" 2>/dev/null || true
+  ADMIN_USER_OWUI="$(resolve_admin_user)"
+  [ "$DRY" != 1 ] && chown -R "$ADMIN_USER_OWUI:$ADMIN_USER_OWUI" "$LOCAL_DIR" 2>/dev/null || true
 fi
 
 # ---- SQLite sanity check ----------------------------------------------------
