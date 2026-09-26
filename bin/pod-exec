@@ -71,6 +71,8 @@ else
   case "$NAME" in
     artisan)       BIN="php" ;;
     redis-cli)     BIN="valkey-cli" ;;   # drop-in compat alias
+    mysql)         BIN="mariadb" ;;      # mariadb:11 ships only the mariadb client
+    mysqldump)     BIN="mariadb-dump" ;; # ... and mariadb-dump, not mysqldump
     php-reload)    BIN="sh"; set -- -c 'php-fpm8.5 -t && kill -USR2 1' ;;
     nginx-reload)  BIN="sh"; set -- -c 'nginx -t && nginx -s reload' ;;
     nginx-test)    BIN="nginx"; set -- -t ;;

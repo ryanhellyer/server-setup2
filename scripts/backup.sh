@@ -89,11 +89,11 @@ if [ "$DO_DB" = 1 ]; then
       for db in $(db_list); do
         [ -n "$db" ] || continue
         if [ "$DRY" = 1 ]; then
-          printf '    DRY: mysqldump %s -> %s/%s-%s.sql.gz\n' "$db" "$SRC_MARIADBS" "$db" "$DATE"
+          printf '    DRY: mariadb-dump %s -> %s/%s-%s.sql.gz\n' "$db" "$SRC_MARIADBS" "$db" "$DATE"
           continue
         fi
         if podman exec "$CONTAINER_MARIADB" sh -c \
-             'exec mysqldump --single-transaction --quick -uroot -p"$MARIADB_ROOT_PASSWORD" "$1"' _ "$db" \
+             'exec mariadb-dump --single-transaction --quick -uroot -p"$MARIADB_ROOT_PASSWORD" "$1"' _ "$db" \
              | gzip > "$SRC_MARIADBS/$db-$DATE.sql.gz"; then
           chown "$ADMIN_USER:$ADMIN_GROUP" "$SRC_MARIADBS/$db-$DATE.sql.gz" 2>/dev/null || true
           log "  dumped $db"
