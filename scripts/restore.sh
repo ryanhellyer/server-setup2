@@ -98,6 +98,10 @@ local_dir_for() {
 }
 
 # Pick the newest snapshot date across the chosen sources (unless given).
+# NOTE: an empty/partial dir left by a killed backup run looks like a valid
+# snapshot here — see the accepted-risk note on backup_newest_snapshot()
+# (lib-backup.sh). If the newest date restores nothing, retry with the
+# previous day's DATE.
 if [ -z "$DATE" ]; then
   for s in "${EXPANDED[@]}"; do
     d="$(backup_newest_snapshot "$s")"

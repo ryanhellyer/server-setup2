@@ -55,6 +55,18 @@ backup_ssh() {
 }
 
 # Newest dated snapshot dir (YYYY-MM-DD) under $BACKUP_REMOTE_BASE/$name.
+#
+# KNOWN, ACCEPTED RISK: a run that is killed mid-rsync (OOM kill / reboot /
+# kill -9 — not a normal rsync failure, which backup.sh cleans up itself)
+# can leave an EMPTY or PARTIAL dated dir behind. This function cannot tell
+# it apart from a complete snapshot, so it may be returned as "newest" and
+# picked by `restore.sh --from-backup` (same-day re-backups are also skipped
+# by backup_snapshot_exists). We accept this: restores are rare, a restore
+# from a partial day fails loudly/visibly (missing files, rsync of an empty
+# dir) and is easily fixed by re-running with the previous day's DATE, and
+# the NEXT backup run heals the chain (its snapshot is complete regardless of
+# what its --link-dest pointed at). Do NOT "fix" this with completion
+# markers unless that trade-off changes.
 backup_newest_snapshot() {
   local name="$1"
   { backup_ssh "ls -1 '$BACKUP_REMOTE_BASE/$name' 2>/dev/null" 2>/dev/null \
