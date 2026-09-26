@@ -63,7 +63,10 @@ backup_newest_snapshot() {
 
 backup_snapshot_exists() {
   local name="$1" date="$2"
-  backup_ssh "test -d '$BACKUP_REMOTE_BASE/$name/$date'" >/dev/null 2>&1
+  # Use `ls`, not `test -d`: Hetzner Storage Boxes give a restricted shell that
+  # does not provide `test` (it would always fail, so the per-day "already
+  # backed up" skip would never trigger). `ls` exits 2 for a missing dir.
+  backup_ssh "ls '$BACKUP_REMOTE_BASE/$name/$date'" >/dev/null 2>&1
 }
 
 # Delete dated snapshot dirs older than $BACKUP_KEEP_DAYS (no-op if unset).

@@ -314,7 +314,7 @@ echo "==> install host CLI wrappers (php, composer, pod-login, ...)"
 "$PWD/scripts/install-cli.sh"
 
 # ---- 9e. SSH login banner listing the host helper commands ----
-echo "==> install SSH login banner (helper commands)"
+echo "==> install SSH login banner (helper commands + backup/TLS/disk status)"
 "$PWD/scripts/install-login-help.sh"
 
 # ---- 10. systemd units ----

@@ -74,7 +74,8 @@ SRC_MARIADBS="$DB_DUMP_DIR"
 SRC_GMAIL="${GMAIL_MAILDIR:-$(resolve_admin_home)/gmail}"
 SRC_REPO="${SERVER_SETUP_ROOT:-$PWD}"
 
-log "=== backup started (date $DATE${DRY:+, dry-run}) ==="
+DRY_LABEL=""; [ "$DRY" = 1 ] && DRY_LABEL=", dry-run"
+log "=== backup started (date $DATE$DRY_LABEL) ==="
 
 # ---- 1. MySQL dumps ---------------------------------------------------------
 if [ "$DO_DB" = 1 ]; then

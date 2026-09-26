@@ -166,13 +166,16 @@ the web root (`~/www` -> `/var/www`) and runs under `sudo` automatically; it
 defaults to `php-fpm` because that is where the PHP tooling (and the site files)
 live.
 
-**The same list is shown every time you log in over SSH.** `deploy.sh` installs
+**The same list is shown every time you log in over SSH**, along with a live
+status block (backups, TLS expiry, disk, site count). `deploy.sh` installs
 `/etc/update-motd.d/99-server-setup`, which Ubuntu's `pam_motd` prints on
-interactive logins. Re-install or remove it with:
+interactive logins, and **disables the stock Ubuntu MOTD fragments** (header,
+help text, landscape sysinfo, motd-news, updates-available, …) so only this
+banner shows. Re-install or remove it with:
 
 ```bash
 sudo bash scripts/install-login-help.sh            # (re)install the banner
-sudo bash scripts/install-login-help.sh --remove   # remove it
+sudo bash scripts/install-login-help.sh --remove   # remove it + restore Ubuntu's
 ```
 
 ### Automatic updates
